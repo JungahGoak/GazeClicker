@@ -241,7 +241,8 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL "${CMAKE_SOURCE_DIR}")
 endif()
 
 # executables
-add_subdirectory(exe/FaceLandmarkImg)
-add_subdirectory(exe/FaceLandmarkVid)
-add_subdirectory(exe/FaceLandmarkVidMulti)
-add_subdirectory(exe/FeatureExtraction)
+# add_subdirectory(exe/FaceLandmarkImg)
+# add_subdirectory(exe/FaceLandmarkVid)
+# add_subdirectory(exe/FaceLandmarkVidMulti)
+# add_subdirectory(exe/FeatureExtraction)
+add_subdirectory(exe/GazeClicker)

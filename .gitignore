@@ -29,6 +29,10 @@ lib/3rdParty/dlib/Debug/
 *.ipch
 exe/Recording/x64/
 exe/Recording/Debug/
+exe/GazeClicker/x64/
+exe/GazeClicker/Debug/
+exe/GazeClicker/Release/
+exe/GazeClicker/processed/
 exe/FeatureExtraction/x64/
 exe/FeatureExtraction/Debug/
 exe/FaceLandmarkVidMulti/x64/
