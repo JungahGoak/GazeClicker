@@ -170,6 +170,8 @@ add_subdirectory(lib/local/FaceAnalyser)
 add_subdirectory(lib/local/GazeAnalyser)
 # Utilities library
 add_subdirectory(lib/local/Utilities)
+# Screen Mapping library
+add_subdirectory(lib/local/MappingScreen)
 
 # test if this file is a top list file
 # thus we're building an OpenFace as a standalone
@@ -185,7 +187,7 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL "${CMAKE_SOURCE_DIR}")
 
     set(LIB_INSTALL_DIR lib)
     set(CONFIG_DEST_DIR ${LIB_INSTALL_DIR}/cmake/OpenFace/)
-    set(OpenFace_LIBRARIES OpenFace::GazeAnalyser OpenFace::FaceAnalyser OpenFace::LandmarkDetector OpenFace::Utilities)
+    set(OpenFace_LIBRARIES OpenFace::GazeAnalyser OpenFace::FaceAnalyser OpenFace::LandmarkDetector OpenFace::Utilities OpenFace::MappingScreen)
 
     # export targets [build tree]
     export(EXPORT OpenFaceTargets
