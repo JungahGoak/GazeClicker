@@ -10,6 +10,7 @@
 #include <Visualizer.h>
 #include <MappingScreen.h>
 #include <VisualizationUtils.h>
+#include <KalmanFilter.h>
 
 #ifndef CONFIG_DIR
 #define CONFIG_DIR "~"
@@ -89,6 +90,9 @@ int main(int argc, char **argv){
 	Utilities::FpsTracker fps_tracker;
 	fps_tracker.AddFrame();
 
+	// kalman filter
+	Utilities::KalmanFilter kf;
+	
     while (true) // this is not a for loop as we might also be reading from a webcam
 	{
 
@@ -106,7 +110,7 @@ int main(int argc, char **argv){
 		}
 
         cv::Mat captured_image;
-		captured_image = sequence_reader.GetNextFrame();
+		captured_image = sequence_reader.GetNextFrame();	
 
 		// For reporting progress
 		double reported_completion = 0;
@@ -127,7 +131,7 @@ int main(int argc, char **argv){
 			cv::Point3f rightGazeCoord(0, 0, 0); cv::Point3f leftGazeCoord(0, 0, 0);
 			cv::Point2f rightScreenCoord(0,0); cv::Point2f leftScreenCoord(0,0);
 			cv::Point3f rightEyePoint(0, 0, 0); cv::Point3f leftEyePoint(0, 0, 0);
-			cv::Point2f screen_center(0,0);
+			cv::Point2f screen_center(0,0); cv::Point2f screen_coord(0,0);
 
             if (detection_success && face_model.eye_model)
 			{
@@ -160,6 +164,15 @@ int main(int argc, char **argv){
 				rightScreenCoord = MappingScreen::GetScreenCoord(rightGazeCoord, rightEyePoint, screen_center, scaling);
 				leftScreenCoord = MappingScreen::GetScreenCoord(leftGazeCoord, leftEyePoint, screen_center, scaling);
 				
+				screen_coord = (rightScreenCoord + leftScreenCoord) / 2;
+				
+				// [kalman filter] 예측 단계
+				cv::Point2f prediction = kf.predict();
+				
+				// [kalman filter] 갱신 단계
+				kf.correct(screen_coord);
+				screen_coord = kf.getCorrectedPosition();
+				
 			}
 
             // Keeping track of FPS
@@ -168,7 +181,7 @@ int main(int argc, char **argv){
             visualizer.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, screen_width, screen_height);
 			//visualizer.SetFps(fps_tracker.GetFPS());
 			//visualizer.SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(face_model), LandmarkDetector::Calculate3DEyeLandmarks(face_model, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy), face_model.detection_certainty);
-			visualizer.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_center);
+			visualizer.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
 
             // detect key presses
 			char character_press = visualizer.ShowObservation();

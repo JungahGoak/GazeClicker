@@ -8,6 +8,7 @@ SET(SOURCE
 	src/stdafx_ut.cpp
 	src/VisualizationUtils.cpp
 	src/Visualizer.cpp
+	src/KalmanFilter.cpp
 )
 
 SET(HEADERS
@@ -21,6 +22,7 @@ SET(HEADERS
 	include/VisualizationUtils.h
 	include/Visualizer.h
 	include/ConcurrentQueue.h
+	include/KalmanFilter.h
 )
 
 add_library( Utilities ${SOURCE} ${HEADERS})
@@ -33,6 +35,7 @@ target_include_directories(Utilities PUBLIC
 target_include_directories(Utilities PRIVATE ${UTILITIES_SOURCE_DIR}/include)
 target_include_directories(Utilities PUBLIC ${OpenCV_INCLUDE_DIRS})
 
+find_package(OpenCV REQUIRED)
 target_link_libraries(Utilities PUBLIC ${OpenCV_LIBS})
 target_link_libraries(Utilities PUBLIC dlib::dlib)
 
