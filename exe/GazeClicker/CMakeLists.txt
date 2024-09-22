@@ -7,5 +7,6 @@ target_link_libraries(GazeClicker FaceAnalyser)
 target_link_libraries(GazeClicker GazeAnalyser)
 target_link_libraries(GazeClicker Utilities)
 target_link_libraries(GazeClicker MappingScreen)
+target_link_libraries(GazeClicker GazePattern)
 
 install (TARGETS GazeClicker DESTINATION bin)
