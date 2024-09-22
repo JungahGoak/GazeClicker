@@ -9,6 +9,7 @@
 #include <SequenceCapture.h>
 #include <Visualizer.h>
 #include <MappingScreen.h>
+#include <GazePattern.h>
 #include <VisualizationUtils.h>
 #include <KalmanFilter.h>
 
@@ -44,6 +45,16 @@ std::vector<std::string> get_arguments(int argc, char **argv)
 		arguments.push_back(std::string(argv[i]));
 	}
 	return arguments;
+}
+
+std::deque<cv::Point2f> coordSequence;
+const int coordinate_sequence_size = 10; //sequence 길이
+
+void updateSequence(cv::Point2f newCoord) {
+    if (coordSequence.size() >= coordinate_sequence_size) {
+        coordSequence.pop_front();  // 가장 오래된 좌표를 제거
+    }
+    coordSequence.push_back(newCoord);  // 새로운 좌표 추가
 }
 
 int main(int argc, char **argv){
@@ -92,7 +103,10 @@ int main(int argc, char **argv){
 
 	// kalman filter
 	Utilities::KalmanFilter kf;
-	
+
+	// HMM GazePattern
+	GazePattern::HMMGazePattern gazePattern(screen_width, screen_height);
+
     while (true) // this is not a for loop as we might also be reading from a webcam
 	{
 
@@ -173,6 +187,8 @@ int main(int argc, char **argv){
 				kf.correct(screen_coord);
 				screen_coord = kf.getCorrectedPosition();
 				
+				// coordinateSeqeunce에 추가
+				updateSequence(screen_coord);
 			}
 
             // Keeping track of FPS
@@ -190,6 +206,26 @@ int main(int argc, char **argv){
 			if (character_press == 'q')
 			{
 				break;
+			}
+
+			// HMM predict
+			if (character_press == 'p')
+			{
+				if (coordSequence.size() == coordinate_sequence_size)
+				{
+					int predictedRegion = gazePattern.predictHMM(coordSequence, coordinate_sequence_size);
+					std::cout << "Predicted region using HMM: " << predictedRegion << std::endl;
+				}
+			}
+
+			// HMM parameter update (click event)
+			if (character_press == 'c')
+			{
+				if (coordSequence.size() == coordinate_sequence_size)
+				{
+					//gazePattern.updateHMMParameters(coordSequence, coordinate_sequence_size );
+					std::cout << "HMM parameters updated based on click event." << std::endl;
+				}
 			}
 
             // Grabbing the next frame in the sequence
