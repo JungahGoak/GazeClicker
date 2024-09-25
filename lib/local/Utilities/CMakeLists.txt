@@ -8,6 +8,7 @@ SET(SOURCE
 	src/stdafx_ut.cpp
 	src/VisualizationUtils.cpp
 	src/Visualizer.cpp
+	src/UI.cpp
 	src/KalmanFilter.cpp
 )
 
@@ -22,6 +23,7 @@ SET(HEADERS
 	include/VisualizationUtils.h
 	include/Visualizer.h
 	include/ConcurrentQueue.h
+	include/UI.h
 	include/KalmanFilter.h
 )
 

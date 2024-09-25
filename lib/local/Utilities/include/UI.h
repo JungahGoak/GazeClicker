@@ -23,27 +23,32 @@ namespace Utilities
 
 		void SetFps(double fps);
 		void SetScreenCoord(cv::Point2f rightScreenCoord, cv::Point2f leftScreenCoord, cv::Point2f screen_center);
-
+		void ShowCoord(cv::Point2f coord);
 		cv::Mat GetVisImage();
-
-        bool vis_track;
-        bool vis_hog;
-        bool vis_align;
-        bool vis_aus;
+		char ShowTrack();
 
 		// 트랙바 값
 		int screen_face_distance;
 		int scaling;
 
+		// 버튼 값
+		int button_x_start = 0;
+		int button_y_start = 0;
+		int button_width = 180;
+		int button_height = 50;
+
         // 확인 여부 플래그 확인
 		bool IsConfirmed();
+		bool dropdown_opened = false;
 
         // Can be adjusted to show less confident frames
 		double visualisation_boundary = 0.4;
+		cv::Mat captured_image; // 캡처된 이미지
 
 	private:
-		cv::Mat captured_image; // 캡처된 이미지
-		cv::Mat settings_page;
+		
+		cv::Mat button_page;
+		cv::Mat button;
         bool confirmed = false; // 사용자 설정 확인 여부
 
 

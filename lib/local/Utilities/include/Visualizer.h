@@ -84,6 +84,7 @@ namespace Utilities
 		char ShowObservation();
 
 		void SetScreenCoord(cv::Point2f rightScreenCoord, cv::Point2f leftScreenCoord, cv::Point2f screen_center);
+		void ShowCoord(cv::Point2f coord);
 
 
 		cv::Mat GetVisImage();

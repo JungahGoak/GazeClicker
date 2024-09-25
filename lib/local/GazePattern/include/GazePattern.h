@@ -25,7 +25,7 @@ namespace GazePattern
         int predictHMM(std::deque<cv::Point2f> coordSequence, int seq_size);
 
         // HMM 파라미터 업데이트
-        void HMMGazePattern::updateHMMParameters(const std::deque<cv::Point2f>& coordSequence, int seq_size, cv::Point2f clickedCoord);
+        void updateHMMParameters(const std::deque<cv::Point2f>& coordSequence, int seq_size, cv::Point2f clickedCoord);
 
 
     private:

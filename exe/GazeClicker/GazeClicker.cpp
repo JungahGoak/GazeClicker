@@ -12,6 +12,9 @@
 #include <GazePattern.h>
 #include <VisualizationUtils.h>
 #include <KalmanFilter.h>
+#include <UI.h>
+
+#include <ApplicationServices/ApplicationServices.h> // Quartz Event Services를 위한 헤더
 
 #ifndef CONFIG_DIR
 #define CONFIG_DIR "~"
@@ -47,6 +50,11 @@ std::vector<std::string> get_arguments(int argc, char **argv)
 	return arguments;
 }
 
+// HMM GazePattern
+int screen_width = 2560;
+int screen_height = 1664;
+GazePattern::HMMGazePattern gazePattern(screen_width, screen_height);
+
 std::deque<cv::Point2f> coordSequence;
 const int coordinate_sequence_size = 10; //sequence 길이
 
@@ -57,15 +65,72 @@ void updateSequence(cv::Point2f newCoord) {
     coordSequence.push_back(newCoord);  // 새로운 좌표 추가
 }
 
+// 마우스 이벤트 콜백 함수
+CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void* refcon) {
+    if (type == kCGEventLeftMouseDown) {
+
+		// 클릭 좌표
+        CGPoint mouseLocation = CGEventGetLocation(event);
+		
+		// HMM parameter update (click event)
+		/*
+        if (coordSequence.size() == coordinate_sequence_size) {
+            gazePattern.updateHMMParameters(coordSequence, coordinate_sequence_size, cv::Point2f(mouseLocation.x, mouseLocation.y));
+        } else {
+            std::cerr << "Sequence size mismatch. Current sequence size: " << coordSequence.size() << ", Expected: " << coordinate_sequence_size << std::endl;
+        }
+		*/
+		
+		std::cout << "Mouse clicked at (" << mouseLocation.x << ", " << mouseLocation.y << ")" << std::endl;
+    }
+
+    return event;  // 다른 이벤트 처리로 전달
+}
+
+// 마우스 이벤트 처리 루프를 실행하는 함수
+void startMouseEventLoop() {
+
+	CFMachPortRef eventTap = CGEventTapCreate(
+		kCGHIDEventTap,                      // 모든 HID(마우스/키보드) 이벤트 감지
+		kCGHeadInsertEventTap,               // 이벤트를 맨 앞에 삽입
+		kCGEventTapOptionDefault,            // 기본 옵션
+		CGEventMaskBit(kCGEventLeftMouseDown), // 왼쪽 마우스 버튼 클릭 이벤트 감지
+		mouseCallback,                       // 이벤트 처리 콜백 함수
+		nullptr);
+
+    if (!eventTap) {
+        std::cerr << "Failed to create event tap. Make sure to enable accessibility permissions." << std::endl;
+        return;
+    }
+
+    // 이벤트 루프에 탭 추가
+    CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
+    CGEventTapEnable(eventTap, true);
+
+    std::cout << "Event tap created successfully!" << std::endl;
+
+    // 이벤트 루프 실행 (스레드에서 실행될 부분)
+    CFRunLoopRun();
+}
+
 int main(int argc, char **argv){
 
-	// User 입력 변수
-	double screen_face_distance = 50;
-	int screen_width = 2560;
-	int screen_height = 1664;
-	float scaling = 70;
-
 	std::vector<std::string> arguments = get_arguments(argc, argv);
+
+	// UI 생성
+	Utilities::UI ui(arguments);
+	ui.CreateTrackbars();
+	ui.ShowUI();
+
+	// 트랙바의 "확인" 버튼이 눌릴 때까지 대기
+    while (!ui.IsConfirmed()) {
+        cv::waitKey(100);  // 100ms 간격으로 확인 여부 체크
+    }
+
+	// User 입력 변수
+	float scaling = ui.scaling;
+	double screen_face_distance = ui.screen_face_distance;
 
 	// no arguments: output usage
 	if (arguments.size() == 1)
@@ -95,7 +160,7 @@ int main(int argc, char **argv){
     Utilities::SequenceCapture sequence_reader;
 
 	// A utility for visualizing the results
-	Utilities::Visualizer visualizer(arguments);
+	//Utilities::Visualizer visualizer(arguments);
 
 	// Tracking FPS for visualization
 	Utilities::FpsTracker fps_tracker;
@@ -104,8 +169,11 @@ int main(int argc, char **argv){
 	// kalman filter
 	Utilities::KalmanFilter kf;
 
-	// HMM GazePattern
-	GazePattern::HMMGazePattern gazePattern(screen_width, screen_height);
+	// 마우스 이벤트 루프를 별도의 스레드에서 실행
+    std::thread mouseEventThread(startMouseEventLoop);
+	// 스레드를 detach하여 메인 스레드가 마우스 이벤트를 기다리지 않게 함
+    mouseEventThread.detach();
+	
 
     while (true) // this is not a for loop as we might also be reading from a webcam
 	{
@@ -120,7 +188,7 @@ int main(int argc, char **argv){
 		{
 			INFO_STREAM("WARNING: using a webcam in feature extraction, Action Unit predictions will not be as accurate in real-time webcam mode");
 			INFO_STREAM("WARNING: using a webcam in feature extraction, forcing visualization of tracking to allow quitting the application (press q)");
-			visualizer.vis_track = true;
+			//visualizer.vis_track = true;
 		}
 
         cv::Mat captured_image;
@@ -179,7 +247,9 @@ int main(int argc, char **argv){
 				leftScreenCoord = MappingScreen::GetScreenCoord(leftGazeCoord, leftEyePoint, screen_center, scaling);
 				
 				screen_coord = (rightScreenCoord + leftScreenCoord) / 2;
-				
+				// screen_coord 출력
+    			//std::cout << "Screen Coord: (" << screen_coord.x << ", " << screen_coord.y << ")" << std::endl;
+
 				// [kalman filter] 예측 단계
 				cv::Point2f prediction = kf.predict();
 				
@@ -194,37 +264,32 @@ int main(int argc, char **argv){
             // Keeping track of FPS
 			fps_tracker.AddFrame();
 
-            visualizer.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, screen_width, screen_height);
+            //visualizer.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, screen_width, screen_height);
+			ui.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, screen_width, screen_height);
+			ui.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
 			//visualizer.SetFps(fps_tracker.GetFPS());
 			//visualizer.SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(face_model), LandmarkDetector::Calculate3DEyeLandmarks(face_model, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy), face_model.detection_certainty);
-			visualizer.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
+			//visualizer.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
+
+			char ui_press = ui.ShowTrack();
 
             // detect key presses
-			char character_press = visualizer.ShowObservation();
+			//char character_press = visualizer.ShowObservation();
 			
 			// quit processing the current sequence (useful when in Webcam mode)
-			if (character_press == 'q')
+			if (ui_press == 'q')
 			{
 				break;
 			}
 
 			// HMM predict
-			if (character_press == 'p')
+			if (ui_press == 'p')
 			{
 				if (coordSequence.size() == coordinate_sequence_size)
 				{
 					int predictedRegion = gazePattern.predictHMM(coordSequence, coordinate_sequence_size);
 					std::cout << "Predicted region using HMM: " << predictedRegion << std::endl;
-				}
-			}
-
-			// HMM parameter update (click event)
-			if (character_press == 'c')
-			{
-				if (coordSequence.size() == coordinate_sequence_size)
-				{
-					//gazePattern.updateHMMParameters(coordSequence, coordinate_sequence_size );
-					std::cout << "HMM parameters updated based on click event." << std::endl;
+					ui.ShowCoord(cv::Point2f(predictedRegion/10, predictedRegion%10));
 				}
 			}
 

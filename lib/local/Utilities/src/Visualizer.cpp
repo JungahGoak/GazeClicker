@@ -426,6 +426,11 @@ void Visualizer::SetScreenCoord(cv::Point2f rightScreenCoord, cv::Point2f leftSc
 
 }
 
+void Visualizer::ShowCoord(cv::Point2f coord){
+	cv::Scalar color = CV_RGB(0, 255, 0); 
+	cv::circle(captured_image, coord, 5, color, 20);
+}
+
 char Visualizer::ShowObservation()
 {
 	bool ovservation_shown = false;

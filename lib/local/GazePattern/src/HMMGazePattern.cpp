@@ -33,28 +33,32 @@ int HMMGazePattern::predictHMM(std::deque<cv::Point2f> coordSequence, int seq_si
     // 최적 경로 추적을 위한 백포인터 배열
     std::vector<int> backPointers(label_grid_size_ * label_grid_size_, -1);
 
+    // 첫 번째 좌표 라벨의 viterbi 점수를 0으로 설정 (처음 시작 지점 확률 가장 높다고 가정)
     cv::Point2f firstPoint = coordSequence.front();
     int firstLabel = getLabelFromCoord(firstPoint);
-
     viterbiScores[firstLabel] = 0.0;
 
-    for (size_t i = 1; i < coordSequence.size(); ++i) {
+    // i+=3 각 좌표의 라벨 계산
+    for (size_t i = 1; i < coordSequence.size(); i += 3) {
         cv::Point2f currentPoint = coordSequence[i];
         int currentLabel = getLabelFromCoord(currentPoint);
 
         cv::Point2f prevPoint = coordSequence[i - 1];
         int prevLabel = getLabelFromCoord(prevPoint);
 
+        // 전이 확률 계산
         double transitionProbability = MIN_PROB;
         if (transitionMatrix.size() > prevLabel && transitionMatrix[prevLabel].size() > currentLabel) {
             transitionProbability = transitionMatrix[prevLabel][currentLabel];
         }
 
+        // 방출 확률 계산
         double emissionProbability = MIN_PROB;
         if (emissionMatrix.size() > currentLabel && totalObservationCount[currentLabel] > 0) {
             emissionProbability = static_cast<double>(observationCountMatrix[currentLabel]) / totalObservationCount[currentLabel];
         }
 
+        // viterbi score 점수 갱신
         double score = viterbiScores[prevLabel] - log(transitionProbability * emissionProbability + MIN_PROB);
 
         if (score < viterbiScores[currentLabel]) {
@@ -63,6 +67,7 @@ int HMMGazePattern::predictHMM(std::deque<cv::Point2f> coordSequence, int seq_si
         }
     }
 
+    // 최적의 라벨 찾음
     cv::Point2f lastPoint = coordSequence.back();
     int lastLabel = getLabelFromCoord(lastPoint);
 
