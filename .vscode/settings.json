@@ -83,6 +83,7 @@
         "stop_token": "cpp",
         "text_encoding": "cpp",
         "thread": "cpp",
-        "forward_list": "cpp"
+        "forward_list": "cpp",
+        "gazepattern.h": "c"
     }
 }

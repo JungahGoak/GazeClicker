@@ -3,48 +3,35 @@
 
 #include <vector>
 #include <unordered_map>
-#include <map>
 #include <deque>
 #include <opencv2/core.hpp>
 
 namespace GazePattern
 {
-    class HMMGazePattern {
+
+    class HMM {
     public:
-        HMMGazePattern(int screen_width, int screen_height, int label_grid_size = 10){
-            screen_width_ = screen_width;
-            screen_height_ = screen_height;
-            label_grid_size_ = label_grid_size;
-            initHMMGazePattern();
-        }
+        // Constructor
+        HMM(int num_states, int num_observations);
 
-        // HMM 초기화 함수
-        void initHMMGazePattern();
-
-        // HMM 기반 예측 함수
-        int predictHMM(std::deque<cv::Point2f> coordSequence, int seq_size);
-
-        // HMM 파라미터 업데이트
-        void HMMGazePattern::updateHMMParameters(const std::deque<cv::Point2f>& coordSequence, int seq_size, cv::Point2f clickedCoord);
-
+        // Baum-Welch algorithm function declaration
+        void baum_welch(const std::vector<int>& obs, int n_iters);
+            // Functions to update transition and observation probabilities
+        void update_transition_and_observation_probabilities(const std::vector<std::vector<double>>& gamma,
+                                                         const std::vector<std::vector<std::vector<double>>>& xi,
+                                                         const std::vector<int>& obs);
+         void print_matrices();
+         double calculate_log_likelihood(const std::vector<int>& obs);
+         std::pair<int, double> find_most_likely_label(const std::vector<std::unique_ptr<GazePattern::HMM>>& hmm_models, const std::vector<int>& obs);
 
     private:
-        int screen_width_;
-        int screen_height_;
-        int label_grid_size_;
-
-        std::vector<std::unordered_map<int, int>> transitionCountMatrix;
-        std::unordered_map<int, std::map<int, double>> transitionMatrix;
-        std::vector<double> emissionMatrix;
-        std::vector<int> observationCountMatrix;
-        std::unordered_map<int, int> stateCount;
-        std::unordered_map<int, int> totalObservationCount;
-
-        const double MIN_PROB = 1e-6;
-
-        // 좌표를 기반으로 라벨을 계산하는 함수 (private 함수)
-        int getLabelFromCoord(cv::Point2f point) const;
+        int num_states;
+        int num_observations;
+        std::vector<std::vector<double>> transition_probabilities; // K x K matrix
+        std::vector<std::vector<double>> observation_probabilities; // K x N matrix
+        double logsumexp(const double* array, int length) const;
     };
+
 }
 
 #endif // GAZE_PATTERN_H

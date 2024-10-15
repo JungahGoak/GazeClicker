@@ -12,6 +12,11 @@
 #include <GazePattern.h>
 #include <VisualizationUtils.h>
 #include <KalmanFilter.h>
+#include <UI.h>
+
+#include <ApplicationServices/ApplicationServices.h> // Quartz Event Services를 위한 헤더
+
+
 
 #ifndef CONFIG_DIR
 #define CONFIG_DIR "~"
@@ -47,6 +52,14 @@ std::vector<std::string> get_arguments(int argc, char **argv)
 	return arguments;
 }
 
+// HMM GazePattern
+int screen_width = 2560;
+int screen_height = 1664;
+int grid_size = 10;
+GazePattern::HMM hmm(8, 10);
+std::vector<std::unique_ptr<GazePattern::HMM>> hmm_models(grid_size*grid_size);
+
+
 std::deque<cv::Point2f> coordSequence;
 const int coordinate_sequence_size = 10; //sequence 길이
 
@@ -55,6 +68,55 @@ void updateSequence(cv::Point2f newCoord) {
         coordSequence.pop_front();  // 가장 오래된 좌표를 제거
     }
     coordSequence.push_back(newCoord);  // 새로운 좌표 추가
+}
+
+// 마우스 이벤트 콜백 함수
+CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void* refcon) {
+    if (type == kCGEventLeftMouseDown) {
+
+		// 클릭 좌표
+        CGPoint mouseLocation = CGEventGetLocation(event);
+		
+		// HMM parameter update (click event)
+		/*
+        if (coordSequence.size() == coordinate_sequence_size) {
+            gazePattern.updateHMMParameters(coordSequence, coordinate_sequence_size, cv::Point2f(mouseLocation.x, mouseLocation.y));
+        } else {
+            std::cerr << "Sequence size mismatch. Current sequence size: " << coordSequence.size() << ", Expected: " << coordinate_sequence_size << std::endl;
+        }
+		*/
+		
+		std::cout << "Mouse clicked at (" << mouseLocation.x << ", " << mouseLocation.y << ")" << std::endl;
+    }
+
+    return event;  // 다른 이벤트 처리로 전달
+}
+
+// 마우스 이벤트 처리 루프를 실행하는 함수
+void startMouseEventLoop() {
+
+	CFMachPortRef eventTap = CGEventTapCreate(
+		kCGHIDEventTap,                      // 모든 HID(마우스/키보드) 이벤트 감지
+		kCGHeadInsertEventTap,               // 이벤트를 맨 앞에 삽입
+		kCGEventTapOptionDefault,            // 기본 옵션
+		CGEventMaskBit(kCGEventLeftMouseDown), // 왼쪽 마우스 버튼 클릭 이벤트 감지
+		mouseCallback,                       // 이벤트 처리 콜백 함수
+		nullptr);
+
+    if (!eventTap) {
+        std::cerr << "Failed to create event tap. Make sure to enable accessibility permissions." << std::endl;
+        return;
+    }
+
+    // 이벤트 루프에 탭 추가
+    CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
+    CGEventTapEnable(eventTap, true);
+
+    std::cout << "Event tap created successfully!" << std::endl;
+
+    // 이벤트 루프 실행 (스레드에서 실행될 부분)
+    CFRunLoopRun();
 }
 
 int main(int argc, char **argv){
@@ -66,6 +128,20 @@ int main(int argc, char **argv){
 	float scaling = 70;
 
 	std::vector<std::string> arguments = get_arguments(argc, argv);
+
+	// UI 생성
+	Utilities::UI ui(arguments);
+	ui.CreateTrackbars(50, 70);
+	ui.ShowUI();
+
+	// 트랙바의 "확인" 버튼이 눌릴 때까지 대기
+    while (!ui.IsConfirmed()) {
+        cv::waitKey(100);  // 100ms 간격으로 확인 여부 체크
+    }
+
+	// User 입력 변수
+	float scaling = ui.scaling;
+	double screen_face_distance = ui.screen_face_distance;
 
 	// no arguments: output usage
 	if (arguments.size() == 1)
@@ -104,8 +180,14 @@ int main(int argc, char **argv){
 	// kalman filter
 	Utilities::KalmanFilter kf;
 
-	// HMM GazePattern
-	GazePattern::HMMGazePattern gazePattern(screen_width, screen_height);
+	// 마우스 이벤트 루프를 별도의 스레드에서 실행
+	// bind: std::bind는 함수 호출 시 필요한 인자를 고정시켜 std::thread에 전달할 수 있도록 해줍니다. 이 경우, startMouseEventLoop 함수에 gazePattern 객체 포인터를 전달
+    std::thread mouseEventThread(std::bind(startMouseEventLoop, &hmm));
+	// 스레드를 detach하여 메인 스레드가 마우스 이벤트를 기다리지 않게 함
+    mouseEventThread.detach();
+	
+	
+	int predictedRegion;
 
     while (true) // this is not a for loop as we might also be reading from a webcam
 	{
@@ -187,6 +269,9 @@ int main(int argc, char **argv){
 				kf.correct(screen_coord);
 				screen_coord = kf.getCorrectedPosition();
 				
+				//std::cout << "screen_coord: " << screen_coord << std::endl;
+				/* 화면 범위 내에 위치하는지 확인 필요 */
+
 				// coordinateSeqeunce에 추가
 				updateSequence(screen_coord);
 			}
@@ -197,7 +282,14 @@ int main(int argc, char **argv){
             visualizer.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, screen_width, screen_height);
 			//visualizer.SetFps(fps_tracker.GetFPS());
 			//visualizer.SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(face_model), LandmarkDetector::Calculate3DEyeLandmarks(face_model, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy), face_model.detection_certainty);
-			visualizer.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
+			//visualizer.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
+
+			if (check_predict)
+			{
+				ui.ShowCoord(gazePattern.getLabelCenter(predictedRegion));
+			}
+
+			char ui_press = ui.ShowTrack();
 
             // detect key presses
 			char character_press = visualizer.ShowObservation();
@@ -208,23 +300,41 @@ int main(int argc, char **argv){
 				break;
 			}
 
+			if (ui_press == 'k')
+			{
+				gazePattern.printMatrix();
+			}
+
+
 			// HMM predict
 			if (character_press == 'p')
 			{
 				if (coordSequence.size() == coordinate_sequence_size)
 				{
-					int predictedRegion = gazePattern.predictHMM(coordSequence, coordinate_sequence_size);
-					std::cout << "Predicted region using HMM: " << predictedRegion << std::endl;
-				}
-			}
+					// HMM을 사용해 예측 결과 얻기
+					//int predictedLabel = gazePattern.predictHMM(coordSequence, coordinate_sequence_size);
+					std::vector<int> directionSequence = convertCoordinatesToDirections(coordSequence);
+					auto result = hmm.find_most_likely_label(hmm_models, directionSequence);
 
-			// HMM parameter update (click event)
-			if (character_press == 'c')
-			{
-				if (coordSequence.size() == coordinate_sequence_size)
-				{
-					//gazePattern.updateHMMParameters(coordSequence, coordinate_sequence_size );
-					std::cout << "HMM parameters updated based on click event." << std::endl;
+					if (result.first != -1) {
+						std::cout << "===> [예측] The most likely label is " << result.first << " with log-likelihood: " << result.second << std::endl;
+					} else {
+						std::cout << "===> [예측] No valid HMM models found." << std::endl;
+					}
+
+					// 예측 결과 출력
+					/*
+					if (predictedLabel != -1) {
+						std::cout << "HMM predicted label: " << predictedLabel << std::endl;
+						check_predict = true;
+						std::cout << "Predicted region using HMM: " << predictedRegion << gazePattern.getLabelCenter(predictedRegion) << std::endl;
+						ui.ShowCoord(gazePattern.getLabelCenter(predictedRegion));
+						// 2초 후에 check_predict를 false로 만드는 스레드 실행
+						std::thread(clearPredictionAfterDelay).detach();
+					} else {
+						std::cerr << "HMM prediction failed: 예측 없는 라벨: " << gazePattern.getLabelFromCoord(coordSequence.back()) << std::endl;
+					}
+					*/
 				}
 			}
 
