@@ -62,20 +62,20 @@ void UI::onScalingChange(int pos, void* userdata)
 }
 
 // 트랙바와 버튼을 설정하는 함수
-void UI::CreateTrackbars()
+void UI::CreateTrackbars(int distance, int scaling)
 {
     // 창 크기 및 초기 설정 페이지 생성
 
     cv::namedWindow("Settings", cv::WINDOW_AUTOSIZE);
-    cv::resizeWindow("Settings", 400, 300);
+    cv::resizeWindow("Settings", 1500, 300);
 
     // button_page를 창 크기에 맞게 설정
     button_page = cv::Mat::zeros(button_height, button_width, CV_8UC3);  // 창 크기와 동일한 크기의 빈 화면
 
 
     // 트랙바 추가 (포인터 대신 콜백을 사용하여 값 변경 처리)
-    cv::createTrackbar("Distance (cm): ", "Settings", NULL, 100, onDistanceChange, this);
-    cv::createTrackbar("Scaling: ", "Settings", NULL, 100, onScalingChange, this);
+    cv::createTrackbar("Distance (cm): ", "Settings", &distance, 100, onDistanceChange, this);
+    cv::createTrackbar("Scaling: ", "Settings", &scaling, 100, onScalingChange, this);
 
     // 마우스 콜백 설정 (확인 버튼 클릭 감지)
     cv::setMouseCallback("Settings", onMouse, this);

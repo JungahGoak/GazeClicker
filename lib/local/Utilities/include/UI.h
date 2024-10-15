@@ -15,7 +15,7 @@ namespace Utilities
 		
 		// 이미지 및 트랙바 설정
 		void SetImage(const cv::Mat& canvas, float fx, float fy, float cx, float cy, int screen_width, int screen_height);
-		void CreateTrackbars(); // 트랙바 생성 함수
+		void CreateTrackbars(int distance, int scaling); // 트랙바 생성 함수
 		char ShowUI(); // 트랙바와 이미지 표시 및 종료
 
 		// Gaze 관련 정보 설정
@@ -28,8 +28,8 @@ namespace Utilities
 		char ShowTrack();
 
 		// 트랙바 값
-		int screen_face_distance;
-		int scaling;
+		int screen_face_distance = 50;
+		int scaling = 30;
 
 		// 버튼 값
 		int button_x_start = 0;
