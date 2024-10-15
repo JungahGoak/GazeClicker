@@ -227,10 +227,8 @@ void clearPredictionAfterDelay() {
 int main(int argc, char **argv){
 
 	// User 입력 변수
-	double screen_face_distance = 50;
 	int screen_width = 2560;
 	int screen_height = 1664;
-	float scaling = 70;
 
 	std::vector<std::string> arguments = get_arguments(argc, argv);
 
@@ -273,9 +271,6 @@ int main(int argc, char **argv){
 		std::cout << "WARNING: no eye model found" << std::endl;
 	}
 
-	// HMM 초기화
-    //gazePattern.initHMMGazePattern();
-
     Utilities::SequenceCapture sequence_reader;
 
 	// A utility for visualizing the results
@@ -293,7 +288,6 @@ int main(int argc, char **argv){
     std::thread mouseEventThread(std::bind(startMouseEventLoop, &hmm));
 	// 스레드를 detach하여 메인 스레드가 마우스 이벤트를 기다리지 않게 함
     mouseEventThread.detach();
-	
 	
 	int predictedRegion;
 
@@ -387,29 +381,25 @@ int main(int argc, char **argv){
             // Keeping track of FPS
 			fps_tracker.AddFrame();
 
-            visualizer.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, screen_width, screen_height);
+            //visualizer.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, screen_width, screen_height);
 			//visualizer.SetFps(fps_tracker.GetFPS());
 			//visualizer.SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(face_model), LandmarkDetector::Calculate3DEyeLandmarks(face_model, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy), face_model.detection_certainty);
 			//visualizer.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
-
-			// if (check_predict)
-			// {
-			// 	ui.ShowCoord(gazePattern.getLabelCenter(predictedRegion));
-			// }
-
+			ui.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, screen_width, screen_height);
+			ui.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
 			char ui_press = ui.ShowTrack();
 
             // detect key presses
-			char character_press = visualizer.ShowObservation();
+			//char character_press = visualizer.ShowObservation();
 			
 			// quit processing the current sequence (useful when in Webcam mode)
-			if (character_press == 'q')
+			if (ui_press == 'q')
 			{
 				break;
 			}
 
 			// HMM predict
-			if (character_press == 'p')
+			if (ui_press == 'p')
 			{
 				if (coordSequence.size() == coordinate_sequence_size)
 				{
