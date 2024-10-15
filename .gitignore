@@ -1,4 +1,4 @@
-lib/local/LandmarkDetector/model/patch_experts/cen_patches_*.dat
+lib/local/LandmarkDetector/model/patch_experts/cen_patches_*.dat*
 
 matlab_version/experiments_menpo/out_semifrontal/
 /x64/Release/

@@ -111,10 +111,16 @@ Visualizer::Visualizer(bool vis_track, bool vis_hog, bool vis_align, bool vis_au
 }
 
 // Setting the image on which to draw
-void Visualizer::SetImage(const cv::Mat& canvas, float fx, float fy, float cx, float cy)
+void Visualizer::SetImage(const cv::Mat& canvas, float fx, float fy, float cx, float cy, int screen_width, int screen_height)
 {
 	// Convert the image to 8 bit RGB
-	captured_image = canvas.clone();
+	//captured_image = canvas.clone();
+	
+	// resized
+	cv::resize(canvas.clone(), captured_image, cv::Size(screen_width, screen_height));
+
+	// 좌우 반전
+	cv::flip(captured_image, captured_image, 1);
 
 	this->fx = fx;
 	this->fy = fy;
@@ -407,6 +413,22 @@ void Visualizer::SetFps(double fps)
 	std::string fpsSt("FPS:");
 	fpsSt += fpsC;
 	cv::putText(captured_image, fpsSt, cv::Point(10, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(255, 0, 0), 1, cv::LINE_AA);
+}
+
+void Visualizer::SetScreenCoord(cv::Point2f rightScreenCoord, cv::Point2f leftScreenCoord, cv::Point2f screen_center){
+
+	cv::Scalar red = CV_RGB(255, 0, 0); // 빨간색
+    cv::Scalar blue = CV_RGB(0, 0, 255); // 파란색
+
+	cv::circle(captured_image, rightScreenCoord, 5, blue, 20);
+	cv::circle(captured_image, leftScreenCoord, 5, blue, 20);
+    cv::circle(captured_image, screen_center, 5, red, 10);
+
+}
+
+void Visualizer::ShowCoord(cv::Point2f coord){
+	cv::Scalar color = CV_RGB(0, 255, 0); 
+	cv::circle(captured_image, coord, 5, color, 20);
 }
 
 char Visualizer::ShowObservation()
