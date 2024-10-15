@@ -5,7 +5,7 @@ include_directories(../../local/LandmarkDetector/include)
 include_directories(../../local/Utilities/include)
 
 SET(SOURCE
-    src/HMMGazePattern.cpp
+    src/HMM.cpp
 )
 
 SET(HEADERS
