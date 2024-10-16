@@ -14,7 +14,7 @@ HMM::HMM(int num_states, int num_observations)
     transition_probabilities.resize(num_states, std::vector<double>(num_states, 1.0 / num_states));
     observation_probabilities.resize(num_states, std::vector<double>(num_observations, 1.0 / num_observations));
 
-        // 초기 전이 행렬 출력
+    // Initial Transition Matrix 출력
     std::cout << "Initial Transition Matrix:" << std::endl;
     for (const auto& row : transition_probabilities) {
         for (double prob : row) {
@@ -23,7 +23,7 @@ HMM::HMM(int num_states, int num_observations)
         std::cout << std::endl;
     }
 
-    // 초기 관측 행렬 출력
+    // Initial Observation Matrix 출력
     std::cout << "Initial Observation Matrix:" << std::endl;
     for (const auto& row : observation_probabilities) {
         for (double prob : row) {
@@ -46,147 +46,134 @@ double HMM::logsumexp(const double* array, int length) const {
         sum_exp += exp(array[i] - max_val);
     }
 
-    // Check for zero or negative sum
     if (sum_exp <= 0.0) {
         std::cerr << "Warning: logsumexp resulted in non-positive sum_exp." << std::endl;
-        return max_val; // Return the max value only
+        return max_val;
     }
 
     return max_val + log(sum_exp);
 }
 
 void HMM::baum_welch(const std::vector<int>& obs, int n_iters) {
-    int N = obs.size(); // 시퀀스 길이
-    int K = num_states;
+    int N = obs.size();  // 관측 시퀀스 길이
 
-    std::cout << "baum-welch function" << std::endl;
+    // 로그 알파, 베타, 감마, 시 초기화
+    std::vector<std::vector<double>> log_alpha(N, std::vector<double>(num_states));
+    std::vector<std::vector<double>> log_beta(N, std::vector<double>(num_states));
+    std::vector<std::vector<double>> log_gamma(N, std::vector<double>(num_states));
+    std::vector<std::vector<std::vector<double>>> log_xi(
+        N - 1, std::vector<std::vector<double>>(num_states, std::vector<double>(num_states)));
 
-    // log_alpha, log_beta, gamma, xi
-    std::vector<std::vector<double>> log_alpha(N, std::vector<double>(K));
-    std::vector<std::vector<double>> log_beta(N, std::vector<double>(K));
-    std::vector<std::vector<double>> log_gamma(N, std::vector<double>(K));
-    std::vector<std::vector<std::vector<double>>> log_xi(N - 1, std::vector<std::vector<double>>(K, std::vector<double>(K)));
-
-    std::vector<std::vector<double>> gamma(N, std::vector<double>(K));
-    std::vector<std::vector<std::vector<double>>> xi(N - 1, std::vector<std::vector<double>>(K, std::vector<double>(K)));
-
-    // Baum-Welch iteration
     for (int iter = 0; iter < n_iters; iter++) {
-        std::cout << "=> baum-welch iter: " << iter << std::endl;
-        // E-step (forward-backward)
-        // Initialize alpha
-        for (int k = 0; k < K; k++) {
-            log_alpha[0][k] = log(1.0 / K) + log(observation_probabilities[k][obs[0]]);
+        std::cout << "=> baum-welch iteration: " << iter << std::endl;
+
+        // Forward step: log_alpha 계산
+        for (int k = 0; k < num_states; k++) {
+            log_alpha[0][k] = log(1.0 / num_states) + log(observation_probabilities[k][obs[0]]);
         }
 
-        std::cout << "log_alpha[" << 0 << "] = ";
-            for (int k = 0; k < K; k++) {
-                std::cout << log_alpha[0][k] << " ";
-            }
-            std::cout << std::endl;
-
-        // Forward pass: 어떤 시점까지의 관측된 데이터와 주어진 모델에서 특정 상태에 도달할 누적 확률
         for (int n = 1; n < N; n++) {
-            for (int k = 0; k < K; k++) {
-                double temp[K];
-                for (int j = 0; j < K; j++) {
-                    temp[j] = log_alpha[n-1][j] + log(transition_probabilities[j][k]);
+            for (int k = 0; k < num_states; k++) {
+                double temp[num_states];
+                for (int j = 0; j < num_states; j++) {
+                    temp[j] = log_alpha[n - 1][j] + log(transition_probabilities[j][k]);
                 }
-                log_alpha[n][k] = logsumexp(temp, K) + log(observation_probabilities[k][obs[n]]);
+                log_alpha[n][k] = logsumexp(temp, num_states) + log(observation_probabilities[k][obs[n]]);
             }
-            // 
-            std::cout << "log_alpha[" << n << "] = ";
-            for (int k = 0; k < K; k++) {
+        }
+
+        // log_alpha 출력
+        std::cout << "Log Alpha:" << std::endl;
+        for (int n = 0; n < N; n++) {
+            for (int k = 0; k < num_states; k++) {
                 std::cout << log_alpha[n][k] << " ";
             }
             std::cout << std::endl;
         }
 
-        std::cout << "==> forward pass completed" << std::endl;
+        // Backward step: log_beta 계산
+        for (int k = 0; k < num_states; k++) {
+            log_beta[N - 1][k] = 0;  // 로그 공간에서 1은 0으로 표현
+        }
 
-        // Backward pass:  특정 시점에서 시작하여 끝까지의 관측된 시퀀스가 주어졌을 때, 특정 상태에 있을 확률
         for (int n = N - 2; n >= 0; n--) {
-            for (int k = 0; k < K; k++) {
-                double temp[K];
-                for (int j = 0; j < K; j++) {
-                    temp[j] = log_beta[n+1][j] + log(transition_probabilities[k][j]) + log(observation_probabilities[j][obs[n+1]]);
+            for (int k = 0; k < num_states; k++) {
+                double temp[num_states];
+                for (int j = 0; j < num_states; j++) {
+                    temp[j] = log(transition_probabilities[k][j]) +
+                              log(observation_probabilities[j][obs[n + 1]]) + log_beta[n + 1][j];
                 }
-                log_beta[n][k] = logsumexp(temp, K);
+                log_beta[n][k] = logsumexp(temp, num_states);
             }
         }
 
-        // 
-        std::cout << "log_beta:" << std::endl;
+        // log_beta 출력
+        std::cout << "Log Beta:" << std::endl;
         for (int n = 0; n < N; n++) {
-            std::cout << "log_beta[" << n << "] = ";
-            for (int k = 0; k < K; k++) {
+            for (int k = 0; k < num_states; k++) {
                 std::cout << log_beta[n][k] << " ";
             }
             std::cout << std::endl;
         }
 
-        // gamma: 시간 t에서 상태 i에 있을 확률
-        double log_evidence = logsumexp(log_alpha[N-1].data(), K);
+        // 감마 및 시 계산
+        double log_evidence = logsumexp(log_alpha[N - 1].data(), num_states);
+
         for (int n = 0; n < N; n++) {
-            for (int k = 0; k < K; k++) {
+            for (int k = 0; k < num_states; k++) {
                 log_gamma[n][k] = log_alpha[n][k] + log_beta[n][k] - log_evidence;
             }
         }
 
-        // 
-        std::cout << "log_gamma:" << std::endl;
-        for (int n = 0; n < N; n++) {
-            std::cout << "log_gamma[" << n << "] = ";
-            for (int k = 0; k < K; k++) {
-                std::cout << log_gamma[n][k] << " ";
-            }
-            std::cout << std::endl;
-        }
+        // log_gamma 출력
+        // std::cout << "Log Gamma:" << std::endl;
+        // for (int n = 0; n < N; n++) {
+        //     for (int k = 0; k < num_states; k++) {
+        //         std::cout << log_gamma[n][k] << " ";
+        //     }
+        //     std::cout << std::endl;
+        // }
 
-        
         for (int n = 0; n < N - 1; n++) {
-            for (int i = 0; i < K; i++) {
-                for (int j = 0; j < K; j++) {
-                    log_xi[n][i][j] = log_alpha[n][i] + log(transition_probabilities[i][j]) +
-                                    log(observation_probabilities[j][obs[n+1]]) +
-                                    log_beta[n+1][j] - log_evidence;
-                }
-            }
-        }
-
-        // xi: 시간 t에서 상태 i에 있다가 시간 t+1에 상태 j로 전이할 확률
-        std::cout << "xi:" << std::endl;
-        for (int n = 0; n < N - 1; n++) {
-            std::cout << "xi[" << n << "]:" << std::endl;
-            for (int i = 0; i < K; i++) {
-                for (int j = 0; j < K; j++) {
-                    std::cout << log_xi[n][i][j] << " ";
-                }
-                std::cout << std::endl;
-            }
-        }
-
-        // 로그 감마 -> 일반 감마로 변환
-        for (int n = 0; n < N; n++) {
-            for (int k = 0; k < K; k++) {
-                log_gamma[n][k] = log_alpha[n][k] + log_beta[n][k] - log_evidence;
-                gamma[n][k] = std::exp(log_gamma[n][k]);  // 일반 확률 값으로 변환
-            }
-        }
-
-        // 로그 시 -> 일반 시로 변환
-        for (int n = 0; n < N - 1; n++) {
-            for (int i = 0; i < K; i++) {
-                for (int j = 0; j < K; j++) {
+            for (int i = 0; i < num_states; i++) {
+                for (int j = 0; j < num_states; j++) {
                     log_xi[n][i][j] = log_alpha[n][i] + log(transition_probabilities[i][j]) +
                                       log(observation_probabilities[j][obs[n + 1]]) +
                                       log_beta[n + 1][j] - log_evidence;
-                    xi[n][i][j] = std::exp(log_xi[n][i][j]);  // 일반 확률 값으로 변환
                 }
             }
         }
 
-        // M-step: Update transition and observation probabilities
+        // log_xi 출력
+        // std::cout << "Log Xi:" << std::endl;
+        // for (int n = 0; n < N - 1; n++) {
+        //     for (int i = 0; i < num_states; i++) {
+        //         for (int j = 0; j < num_states; j++) {
+        //             std::cout << log_xi[n][i][j] << " ";
+        //         }
+        //         std::cout << std::endl;
+        //     }
+        // }
+
+        // 매개변수 업데이트
+        std::vector<std::vector<double>> gamma(N, std::vector<double>(num_states));
+        std::vector<std::vector<std::vector<double>>> xi(
+            N - 1, std::vector<std::vector<double>>(num_states, std::vector<double>(num_states)));
+
+        for (int n = 0; n < N; n++) {
+            for (int k = 0; k < num_states; k++) {
+                gamma[n][k] = exp(log_gamma[n][k]);
+            }
+        }
+
+        for (int n = 0; n < N - 1; n++) {
+            for (int i = 0; i < num_states; i++) {
+                for (int j = 0; j < num_states; j++) {
+                    xi[n][i][j] = exp(log_xi[n][i][j]);
+                }
+            }
+        }
+
         update_transition_and_observation_probabilities(gamma, xi, obs);
     }
 }
@@ -195,16 +182,14 @@ void HMM::update_transition_and_observation_probabilities(const std::vector<std:
                                                           const std::vector<std::vector<std::vector<double>>>& xi,
                                                           const std::vector<int>& obs) {
     int N = obs.size();
-    int K = num_states;
 
-    // 전이확률: 상태 i에서 상태j로 전이할 확률
-    for (int i = 0; i < K; i++) {
+    for (int i = 0; i < num_states; i++) {
         double gamma_sum = 0.0;
         for (int n = 0; n < N - 1; n++) {
             gamma_sum += gamma[n][i];
         }
 
-        for (int j = 0; j < K; j++) {
+        for (int j = 0; j < num_states; j++) {
             double xi_sum = 0.0;
             for (int n = 0; n < N - 1; n++) {
                 xi_sum += xi[n][i][j];
@@ -213,8 +198,7 @@ void HMM::update_transition_and_observation_probabilities(const std::vector<std:
         }
     }
 
-    // 관측확률: 상태j에서 관측 기호 k가 나타날 확률
-    for (int j = 0; j < K; j++) {
+    for (int j = 0; j < num_states; j++) {
         double gamma_sum = 0.0;
         for (int n = 0; n < N; n++) {
             gamma_sum += gamma[n][j];
@@ -230,8 +214,8 @@ void HMM::update_transition_and_observation_probabilities(const std::vector<std:
             observation_probabilities[j][v] = (gamma_obs_sum + 1e-6) / (gamma_sum + 1e-6);
         }
     }
-}
 
+}
 void HMM::print_matrices() const {
     
     std::cout << "Transition Matrix:" << std::endl;

@@ -166,6 +166,45 @@ char UI::ShowTrack(){
 	return result;
 }
 
+
+void UI::SetGrid(int screen_width, int screen_height, int grid_size)
+{
+    int labelRegionWidth = screen_width / grid_size;
+    int labelRegionHeight = screen_height / grid_size;
+
+    // 격자와 라벨 그리기
+    for (int y = 0; y < grid_size; ++y) {
+        for (int x = 0; x < grid_size; ++x) {
+            // 현재 격자의 왼쪽 위 좌표
+            int top_left_x = x * labelRegionWidth;
+            int top_left_y = y * labelRegionHeight;
+
+            // 현재 격자의 오른쪽 아래 좌표
+            int bottom_right_x = (x + 1) * labelRegionWidth;
+            int bottom_right_y = (y + 1) * labelRegionHeight;
+
+            // 격자 그리기 (흰색)
+            cv::rectangle(captured_image, 
+                          cv::Point(top_left_x, top_left_y), 
+                          cv::Point(bottom_right_x, bottom_right_y), 
+                          cv::Scalar(255, 255, 255), 1);
+
+            // 라벨 텍스트 생성
+            int label = y * grid_size + x;
+            std::string labelText = std::to_string(label);
+
+            // 라벨을 격자 중앙에 출력 (작은 글씨, 흰색)
+            int text_x = top_left_x + labelRegionWidth / 4;
+            int text_y = top_left_y + labelRegionHeight / 2;
+
+            cv::putText(captured_image, labelText, 
+                        cv::Point(text_x, text_y), 
+                        cv::FONT_HERSHEY_SIMPLEX, 0.5, 
+                        cv::Scalar(255, 255, 255), 1);
+        }
+    }
+}
+
 // 설정이 완료되었는지 확인하는 함수
 bool UI::IsConfirmed()
 {

@@ -55,8 +55,9 @@ std::vector<std::string> get_arguments(int argc, char **argv)
 // HMM GazePattern
 int screen_width = 2560;
 int screen_height = 1664;
+
 int grid_size = 10;
-GazePattern::HMM hmm(8, 10);
+GazePattern::HMM hmm(10, 8);
 std::vector<std::unique_ptr<GazePattern::HMM>> hmm_models(grid_size*grid_size);
 
 std::deque<cv::Point2f> coordSequence;
@@ -77,14 +78,14 @@ int getDirectionFromAngle(float angle) {
     }
     
     // 각도에 따라 1~8 방향으로 변환
-    if (angle >= 0 && angle < 45) return 1;
-    if (angle >= 45 && angle < 90) return 2;
-    if (angle >= 90 && angle < 135) return 3;
-    if (angle >= 135 && angle < 180) return 4;
-    if (angle >= 180 && angle < 225) return 5;
-    if (angle >= 225 && angle < 270) return 6;
-    if (angle >= 270 && angle < 315) return 7;  
-    return 8;
+    if (angle >= 0 && angle < 45) return 0;
+    if (angle >= 45 && angle < 90) return 1;
+    if (angle >= 90 && angle < 135) return 2;
+    if (angle >= 135 && angle < 180) return 3;
+    if (angle >= 180 && angle < 225) return 4;
+    if (angle >= 225 && angle < 270) return 5;
+    if (angle >= 270 && angle < 315) return 6;  
+    return 7;
 }
 
 // 좌표 두 개를 받아 두 점 사이의 변화를 1~8 방향으로 변환하는 함수
@@ -123,14 +124,14 @@ int getLabelFromCoord(cv::Point2f point) {
 }
 
 // 마우스 이벤트 콜백 함수
-CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void* refcon) {
+CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *userInfo) {
     if (type == kCGEventLeftMouseDown) {
 
 		// 클릭 좌표
         CGPoint mouseLocation = CGEventGetLocation(event);
 		
 		// HMMGazePattern 객체와 좌표 시퀀스 접근
-        GazePattern::HMM* hmm = static_cast<GazePattern::HMM*>(refcon);
+        //GazePattern::HMM* hmm = static_cast<GazePattern::HMM*>(refcon);
         
         // 좌표 시퀀스의 크기가 맞으면 HMM 파라미터 업데이트
         if (coordSequence.size() == coordinate_sequence_size) {
@@ -188,7 +189,7 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
 }
 
 // 마우스 이벤트 처리 루프를 실행하는 함수
-void startMouseEventLoop(GazePattern::HMM* hmm) {
+void startMouseEventLoop() {
 
 	CFMachPortRef eventTap = CGEventTapCreate(
 		kCGHIDEventTap,                      // 모든 HID(마우스/키보드) 이벤트 감지
@@ -196,7 +197,7 @@ void startMouseEventLoop(GazePattern::HMM* hmm) {
 		kCGEventTapOptionDefault,            // 기본 옵션
 		CGEventMaskBit(kCGEventLeftMouseDown), // 왼쪽 마우스 버튼 클릭 이벤트 감지
 		mouseCallback,                       // 이벤트 처리 콜백 함수
-		hmm							// refcon으로 gazePattern 전달
+		nullptr					// 
 		);
 
     if (!eventTap) {
@@ -285,7 +286,7 @@ int main(int argc, char **argv){
 
 	// 마우스 이벤트 루프를 별도의 스레드에서 실행
 	// bind: std::bind는 함수 호출 시 필요한 인자를 고정시켜 std::thread에 전달할 수 있도록 해줍니다. 이 경우, startMouseEventLoop 함수에 gazePattern 객체 포인터를 전달
-    std::thread mouseEventThread(std::bind(startMouseEventLoop, &hmm));
+    std::thread mouseEventThread(std::bind(startMouseEventLoop), nullptr);
 	// 스레드를 detach하여 메인 스레드가 마우스 이벤트를 기다리지 않게 함
     mouseEventThread.detach();
 	
@@ -364,15 +365,11 @@ int main(int argc, char **argv){
 				
 				screen_coord = (rightScreenCoord + leftScreenCoord) / 2;
 				
-				// [kalman filter] 예측 단계
-				cv::Point2f prediction = kf.predict();
-				
+				cv::Point2f predicted = kf.predict();
+
 				// [kalman filter] 갱신 단계
 				kf.correct(screen_coord);
 				screen_coord = kf.getCorrectedPosition();
-				
-				//std::cout << "screen_coord: " << screen_coord << std::endl;
-				/* 화면 범위 내에 위치하는지 확인 필요 */
 
 				// coordinateSeqeunce에 추가
 				updateSequence(screen_coord);
@@ -387,6 +384,8 @@ int main(int argc, char **argv){
 			//visualizer.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
 			ui.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, screen_width, screen_height);
 			ui.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
+			//ui.SetGrid(screen_width, screen_height, grid_size);
+
 			char ui_press = ui.ShowTrack();
 
             // detect key presses
