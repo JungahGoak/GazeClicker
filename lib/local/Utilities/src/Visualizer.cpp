@@ -420,7 +420,7 @@ void Visualizer::SetScreenCoord(cv::Point2f rightScreenCoord, cv::Point2f leftSc
 	cv::Scalar red = CV_RGB(255, 0, 0); // 빨간색
     cv::Scalar blue = CV_RGB(0, 0, 255); // 파란색
 
-	cv::circle(captured_image, rightScreenCoord, 5, blue, 20);
+	cv::circle(captured_image, rightScreenCoord, 15, blue, 20);
 	cv::circle(captured_image, leftScreenCoord, 5, blue, 20);
     cv::circle(captured_image, screen_center, 5, red, 10);
 

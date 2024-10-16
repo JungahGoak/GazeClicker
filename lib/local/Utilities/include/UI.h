@@ -24,6 +24,8 @@ namespace Utilities
 		void SetFps(double fps);
 		void SetScreenCoord(cv::Point2f rightScreenCoord, cv::Point2f leftScreenCoord, cv::Point2f screen_center);
 		void ShowCoord(cv::Point2f coord);
+		void SetGrid(int screen_width, int screen_height, int grid_size);
+
 		cv::Mat GetVisImage();
 		char ShowTrack();
 
