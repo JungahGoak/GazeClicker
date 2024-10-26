@@ -63,7 +63,7 @@ std::deque<cv::Point2f> coord_sequence;
 std::vector<std::unique_ptr<GazePattern::HMM>> hmm_models(GRID_SIZE*GRID_SIZE);
 
 // 초기 설정: 8방향 기울기 배열과 절편
-std::vector<double> slopes(8, 0.2);  // 초기 기울기는 모두 1
+std::vector<double> slopes(8, 0.1);  // 초기 기울기는 모두 1
 double intercept = 60;               // 초기 절편 값
 double correction_rate = 0.001;        // 보정 비율
 
@@ -332,7 +332,7 @@ int main(int argc, char **argv){
 				double distance_from_center = cv::norm(screen_coord - screen_center);
 				//std::cout << "Distance from center: " << distance_from_center << std::endl;
 				int direction = MappingScreen::calculateDirection(screen_center, screen_coord);
-				std::cout << "Calculated direction: " << direction << " // " << slopes[direction]* distance_from_center + intercept<< std::endl;
+				//std::cout << "Calculated direction: " << direction << " // " << slopes[direction]* distance_from_center + intercept<< std::endl;
 
 				// slopes
 				rightScreenCoord = MappingScreen::GetScreenCoord(rightGazeCoord, rightEyePoint, screen_center, slopes[direction]*distance_from_center + intercept);
