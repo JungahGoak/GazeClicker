@@ -4,6 +4,9 @@ include_directories(../../local/LandmarkDetector/include)
 #Utilities library
 include_directories(../../local/Utilities/include)
 
+#GazePattern library
+include_directories(../../local/GazePattern/include)
+
 SET(SOURCE
     src/MappingScreen.cpp
 )

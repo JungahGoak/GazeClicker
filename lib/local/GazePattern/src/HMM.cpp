@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <assert.h>
+#include "MappingScreen.h"
 
 namespace GazePattern {
 
@@ -71,7 +72,7 @@ void HMM::baum_welch(const std::vector<int>& obs, int n_iters) {
         for (int k = 0; k < num_states; k++) {
             log_alpha[0][k] = log(1.0 / num_states) + log(observation_probabilities[k][obs[0]]);
         }
-
+        
         for (int n = 1; n < N; n++) {
             for (int k = 0; k < num_states; k++) {
                 double temp[num_states];
@@ -83,13 +84,13 @@ void HMM::baum_welch(const std::vector<int>& obs, int n_iters) {
         }
 
         // log_alpha 출력
-        std::cout << "Log Alpha:" << std::endl;
-        for (int n = 0; n < N; n++) {
-            for (int k = 0; k < num_states; k++) {
-                std::cout << log_alpha[n][k] << " ";
-            }
-            std::cout << std::endl;
-        }
+        // std::cout << "Log Alpha:" << std::endl;
+        // for (int n = 0; n < N; n++) {
+        //     for (int k = 0; k < num_states; k++) {
+        //         std::cout << log_alpha[n][k] << " ";
+        //     }
+        //     std::cout << std::endl;
+        // }
 
         // Backward step: log_beta 계산
         for (int k = 0; k < num_states; k++) {
@@ -267,39 +268,6 @@ double HMM::calculate_log_likelihood(const std::vector<int>& obs) {
     return logsumexp(log_alpha[N - 1].data(), K);
 }
 
-// 가장 높은 확률의 라벨과 해당 확률을 반환하는 함수
-std::pair<int, double> HMM::find_most_likely_label(const std::vector<std::unique_ptr<GazePattern::HMM>>& hmm_models, const std::vector<int>& obs) {
-    int best_label = -1;
-    double max_log_likelihood = -std::numeric_limits<double>::infinity();
-    std::vector<double> log_likelihoods;
-
-    // HMM 목록 순회
-    for (int label = 0; label < hmm_models.size(); label++) {
-        if (hmm_models[label] != nullptr) {
-            // 로그-발생 확률 계산
-            double log_likelihood = hmm_models[label]->calculate_log_likelihood(obs);
-            log_likelihoods.push_back(log_likelihood);
-            std::cout << "Label " << label << " log-likelihood: " << log_likelihood << std::endl;
-
-            // 최대 로그-발생 확률을 가진 라벨 찾기
-            if (log_likelihood > max_log_likelihood) {
-                max_log_likelihood = log_likelihood;
-                best_label = label;
-            }
-        }
-    }
-
-    // 로그 우도값을 확률로 변환
-    double sum_exp = 0.0;
-    for (double ll : log_likelihoods) {
-        sum_exp += exp(ll - max_log_likelihood);
-    }
-
-    double best_probability = exp(max_log_likelihood - max_log_likelihood) / sum_exp; // 가장 높은 확률 계산
-
-    // 결과 반환
-    return {best_label, best_probability};
-}
 
 
 } // namespace GazePattern
