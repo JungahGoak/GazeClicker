@@ -14,7 +14,7 @@ namespace Utilities
 		UI(std::vector<std::string> arguments);
 		
 		// 이미지 및 트랙바 설정
-		void SetImage(const cv::Mat& canvas, float fx, float fy, float cx, float cy, int screen_width, int screen_height);
+		void SetImage(const cv::Mat& canvas, int screen_width, int screen_height);
 		void CreateTrackbars(int distance, int scaling); // 트랙바 생성 함수
 		char ShowUI(); // 트랙바와 이미지 표시 및 종료
 
@@ -23,12 +23,13 @@ namespace Utilities
 
 		void SetFps(double fps);
 		void SetScreenCoord(cv::Point2f rightScreenCoord, cv::Point2f leftScreenCoord, cv::Point2f screen_center);
+		void SetRedScreenCoord(cv::Point2f screen_center);
 		void ShowCoord(cv::Point2f coord);
 		void SetGrid(int screen_width, int screen_height, int grid_size);
 
 		cv::Mat GetVisImage();
 		void drawCircleAsync(cv::Point2f center);
-		char ShowTrack();
+		char ShowTrack(int screen_width, int screen_height);
 
 		// 트랙바 값
 		int screen_face_distance = 50;
