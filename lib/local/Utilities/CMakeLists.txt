@@ -10,6 +10,7 @@ SET(SOURCE
 	src/Visualizer.cpp
 	src/UI.cpp
 	src/KalmanFilter.cpp
+	src/Click.cpp
 )
 
 SET(HEADERS
@@ -25,6 +26,7 @@ SET(HEADERS
 	include/ConcurrentQueue.h
 	include/UI.h
 	include/KalmanFilter.h
+	include/Click.h
 )
 
 add_library( Utilities ${SOURCE} ${HEADERS})
