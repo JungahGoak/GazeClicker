@@ -2,6 +2,8 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
+#include <thread> 
+#include <chrono>
 
 using namespace Utilities;
 
@@ -81,6 +83,21 @@ void UI::CreateTrackbars(int distance, int scaling)
     cv::setMouseCallback("Settings", onMouse, this);
 }
 
+void UI::drawCircleAsync(cv::Point2f center) {
+    // 동그라미 그리기
+    cv::Mat overlay = captured_image.clone();
+    cv::circle(overlay, center, 50, cv::Scalar(0, 0, 255), 3);  // 빨간색 동그라미
+
+    // overlay 이미지를 tracking result에 표시
+    cv::imshow("tracking result", overlay);
+
+    // 2초 후 원래 이미지 복원
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    // 원래 이미지로 복원
+    cv::imshow("tracking result", captured_image);
+}
+
 // 설정된 이미지와 트랙바 창을 표시하는 함수
 char UI::ShowUI()
 {
@@ -148,7 +165,7 @@ void UI::SetScreenCoord(cv::Point2f rightScreenCoord, cv::Point2f leftScreenCoor
 
 void UI::ShowCoord(cv::Point2f coord){
 	cv::Scalar color = CV_RGB(0, 255, 0); 
-	cv::circle(captured_image, coord, 5, color, 20);
+	cv::circle(captured_image, coord, 20, color, 20);
 }
 
 char UI::ShowTrack(){

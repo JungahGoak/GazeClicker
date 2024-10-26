@@ -2,7 +2,9 @@
 
 // Local includes
 #include "LandmarkCoreIncludes.h"
+#include "GazeClickerConfig.h"
 
+#include <GazePattern.h>
 #include <Face_utils.h>
 #include <FaceAnalyser.h>
 #include <GazeEstimation.h>
@@ -15,8 +17,6 @@
 #include <UI.h>
 
 #include <ApplicationServices/ApplicationServices.h> // Quartz Event Services를 위한 헤더
-
-
 
 #ifndef CONFIG_DIR
 #define CONFIG_DIR "~"
@@ -44,7 +44,6 @@ std::vector<std::string> get_arguments(int argc, char **argv)
 
 	std::vector<std::string> arguments;
 
-	// First argument is reserved for the name of the executable
 	for (int i = 0; i < argc; ++i)
 	{
 		arguments.push_back(std::string(argv[i]));
@@ -52,75 +51,23 @@ std::vector<std::string> get_arguments(int argc, char **argv)
 	return arguments;
 }
 
-// HMM GazePattern
-int screen_width = 2560;
-int screen_height = 1664;
+// int NUM_STATES = 10;
+// int NUM_OBSERVATIONS = 8;
 
-int grid_size = 10;
-GazePattern::HMM hmm(10, 8);
-std::vector<std::unique_ptr<GazePattern::HMM>> hmm_models(grid_size*grid_size);
+// int screen_width;
+// int screen_height;
 
-std::deque<cv::Point2f> coordSequence;
-const int coordinate_sequence_size = 10; //sequence 길이
+// const int COORD_SEQUENCE_LENGTH = 10;
+// int GRID_SIZE = 10;
+std::deque<cv::Point2f> coord_sequence;
+std::vector<std::unique_ptr<GazePattern::HMM>> hmm_models(GRID_SIZE*GRID_SIZE);
 
-void updateSequence(cv::Point2f newCoord) {
-    if (coordSequence.size() >= coordinate_sequence_size) {
-        coordSequence.pop_front();  // 가장 오래된 좌표를 제거
+
+static void updateSequence(cv::Point2f newCoord) {
+    if (coord_sequence.size() >= COORD_SEQUENCE_LENGTH) {
+        coord_sequence.pop_front();
     }
-    coordSequence.push_back(newCoord);  // 새로운 좌표 추가
-}
-
-/* sequence coord -> observation symbol */ 
-// 각도와 방향을 1~8로 변환하는 함수
-int getDirectionFromAngle(float angle) {
-    if (angle < 0) {
-        angle += 360;
-    }
-    
-    // 각도에 따라 1~8 방향으로 변환
-    if (angle >= 0 && angle < 45) return 0;
-    if (angle >= 45 && angle < 90) return 1;
-    if (angle >= 90 && angle < 135) return 2;
-    if (angle >= 135 && angle < 180) return 3;
-    if (angle >= 180 && angle < 225) return 4;
-    if (angle >= 225 && angle < 270) return 5;
-    if (angle >= 270 && angle < 315) return 6;  
-    return 7;
-}
-
-// 좌표 두 개를 받아 두 점 사이의 변화를 1~8 방향으로 변환하는 함수
-int calculateDirection(cv::Point2f startPoint, cv::Point2f endPoint) {
-    // 두 좌표의 변화를 구함
-    float deltaX = endPoint.x - startPoint.x;
-    float deltaY = endPoint.y - startPoint.y;
-
-    // 변화량을 이용해 각도를 구함 (atan2는 라디안을 반환하므로 각도로 변환)
-    float angle = atan2(deltaY, deltaX) * 180.0 / CV_PI; // atan2는 -180 ~ 180 사이의 값 반환
-
-    // 방향을 1~8로 변환
-    return getDirectionFromAngle(angle);
-}
-
-// 10개의 좌표 시퀀스를 받아 1~8로 변환하는 함수
-std::vector<int> convertCoordinatesToDirections(const std::deque<cv::Point2f>& coordSequence) {
-    std::vector<int> directionSequence;
-
-    // 10개의 좌표 시퀀스에서 앞뒤 변화를 계산
-    for (size_t i = 0; i < coordSequence.size() - 1; ++i) {
-        int direction = calculateDirection(coordSequence[i], coordSequence[i+1]);
-        directionSequence.push_back(direction);
-    }
-
-    return directionSequence;
-}
-
-/* label <-> coord */
-int getLabelFromCoord(cv::Point2f point) {
-    int labelRegionWidth = screen_width / grid_size;
-    int labelRegionHeight = screen_height / grid_size;
-    int regionX = point.x / labelRegionWidth;
-    int regionY = point.y / labelRegionHeight;
-    return regionY * grid_size + regionX;
+    coord_sequence.push_back(newCoord);
 }
 
 // 마우스 이벤트 콜백 함수
@@ -130,22 +77,11 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
 		// 클릭 좌표
         CGPoint mouseLocation = CGEventGetLocation(event);
 		
-		// HMMGazePattern 객체와 좌표 시퀀스 접근
-        //GazePattern::HMM* hmm = static_cast<GazePattern::HMM*>(refcon);
-        
         // 좌표 시퀀스의 크기가 맞으면 HMM 파라미터 업데이트
-        if (coordSequence.size() == coordinate_sequence_size) {
-
-			// 좌표 시퀀스 출력
-			std::cout << "=> 좌표 시퀀스: ";
-			for (const auto& point : coordSequence) {
-				std::cout << "(" << point.x << ", " << point.y << ") ";
-			}
-			std::cout << std::endl;
+        if (coord_sequence.size() == COORD_SEQUENCE_LENGTH) {
 
             // 좌표 시퀀스를 관측 심볼(1~8)로 변환
-            std::vector<int> directionSequence = convertCoordinatesToDirections(coordSequence);
-			
+            std::vector<int> directionSequence = MappingScreen::convertCoordinatesToDirections(coord_sequence);
 			
 			// 1~8 변환된 방향 시퀀스 출력
 			std::cout << "==> 좌표 시퀀스 변환(1~8): ";
@@ -158,15 +94,13 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
 			std::cout << "===> 마우스 클릭 좌표: (" << mouseLocation.x << ", " << mouseLocation.y << ")" << std::endl;
 
             // 클릭된 좌표를 라벨 값으로 변환
-            int clickedLabel = getLabelFromCoord(cv::Point2f(mouseLocation.x, mouseLocation.y));
+            int clickedLabel = MappingScreen::getLabelFromCoord(cv::Point2f(mouseLocation.x, mouseLocation.y));
 			std::cout << "====> 클릭 좌표 변환(label): " << clickedLabel <<std::endl;
 
             // 클릭된 라벨에 해당하는 HMM 모델 유무 확인
             if (hmm_models[clickedLabel] == nullptr) {
                 // 해당 라벨에 대한 HMM 모델이 없으면 새로 생성
-                int num_states = 10;
-                int num_observations = 8;
-                hmm_models[clickedLabel] = std::make_unique<GazePattern::HMM>(num_states, num_observations);
+                hmm_models[clickedLabel] = std::make_unique<GazePattern::HMM>(NUM_STATES, NUM_OBSERVATIONS);
                 std::cout << "HMM created for label: " << clickedLabel << std::endl;
             }
 
@@ -175,16 +109,11 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
             selectedHMM.baum_welch(directionSequence, 1);
             selectedHMM.print_matrices();
 
-
             std::cout << "HMM updated with sequence and clicked label: " << clickedLabel << std::endl;
         } else {
-            std::cerr << "Sequence size mismatch. Current sequence size: " << coordSequence.size() << ", Expected: " << coordinate_sequence_size << std::endl;
+            std::cerr << "Sequence size mismatch. Current sequence size: " << coord_sequence.size() << ", Expected: " << COORD_SEQUENCE_LENGTH << std::endl;
         }
-
-        // 클릭 좌표 출력
-        std::cout << "Mouse clicked at (" << mouseLocation.x << ", " << mouseLocation.y << ")" << std::endl;
     }
-
     return event;  // 다른 이벤트 처리로 전달
 }
 
@@ -197,7 +126,7 @@ void startMouseEventLoop() {
 		kCGEventTapOptionDefault,            // 기본 옵션
 		CGEventMaskBit(kCGEventLeftMouseDown), // 왼쪽 마우스 버튼 클릭 이벤트 감지
 		mouseCallback,                       // 이벤트 처리 콜백 함수
-		nullptr					// 
+		nullptr
 		);
 
     if (!eventTap) {
@@ -227,9 +156,8 @@ void clearPredictionAfterDelay() {
 
 int main(int argc, char **argv){
 
-	// User 입력 변수
-	int screen_width = 2560;
-	int screen_height = 1664;
+	// 화면 크기 자동 설정
+    setScreenSize();
 
 	std::vector<std::string> arguments = get_arguments(argc, argv);
 
@@ -365,9 +293,7 @@ int main(int argc, char **argv){
 				
 				screen_coord = (rightScreenCoord + leftScreenCoord) / 2;
 				
-				cv::Point2f predicted = kf.predict();
-
-				// [kalman filter] 갱신 단계
+				kf.predict();
 				kf.correct(screen_coord);
 				screen_coord = kf.getCorrectedPosition();
 
@@ -377,19 +303,12 @@ int main(int argc, char **argv){
 
             // Keeping track of FPS
 			fps_tracker.AddFrame();
-
-            //visualizer.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, screen_width, screen_height);
-			//visualizer.SetFps(fps_tracker.GetFPS());
-			//visualizer.SetObservationGaze(gazeDirection0, gazeDirection1, LandmarkDetector::CalculateAllEyeLandmarks(face_model), LandmarkDetector::Calculate3DEyeLandmarks(face_model, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy), face_model.detection_certainty);
-			//visualizer.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
+			
 			ui.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, screen_width, screen_height);
 			ui.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
-			//ui.SetGrid(screen_width, screen_height, grid_size);
+			ui.SetGrid(screen_width, screen_height, GRID_SIZE);
 
 			char ui_press = ui.ShowTrack();
-
-            // detect key presses
-			//char character_press = visualizer.ShowObservation();
 			
 			// quit processing the current sequence (useful when in Webcam mode)
 			if (ui_press == 'q')
@@ -400,32 +319,9 @@ int main(int argc, char **argv){
 			// HMM predict
 			if (ui_press == 'p')
 			{
-				if (coordSequence.size() == coordinate_sequence_size)
+				if (coord_sequence.size() == COORD_SEQUENCE_LENGTH)
 				{
-					// HMM을 사용해 예측 결과 얻기
-					//int predictedLabel = gazePattern.predictHMM(coordSequence, coordinate_sequence_size);
-					std::vector<int> directionSequence = convertCoordinatesToDirections(coordSequence);
-					auto result = hmm.find_most_likely_label(hmm_models, directionSequence);
-
-					if (result.first != -1) {
-						std::cout << "===> [예측] The most likely label is " << result.first << " with log-likelihood: " << result.second << std::endl;
-					} else {
-						std::cout << "===> [예측] No valid HMM models found." << std::endl;
-					}
-
-					// 예측 결과 출력
-					/*
-					if (predictedLabel != -1) {
-						std::cout << "HMM predicted label: " << predictedLabel << std::endl;
-						check_predict = true;
-						std::cout << "Predicted region using HMM: " << predictedRegion << gazePattern.getLabelCenter(predictedRegion) << std::endl;
-						ui.ShowCoord(gazePattern.getLabelCenter(predictedRegion));
-						// 2초 후에 check_predict를 false로 만드는 스레드 실행
-						std::thread(clearPredictionAfterDelay).detach();
-					} else {
-						std::cerr << "HMM prediction failed: 예측 없는 라벨: " << gazePattern.getLabelFromCoord(coordSequence.back()) << std::endl;
-					}
-					*/
+					GazePattern::predict(hmm_models, coord_sequence);
 				}
 			}
 

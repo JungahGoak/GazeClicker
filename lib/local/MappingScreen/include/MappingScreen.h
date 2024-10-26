@@ -15,5 +15,16 @@ namespace MappingScreen
 
     cv::Point2f GetScreenCoord(cv::Point3f GazeCoord, cv::Point3f EyeCoord, cv::Point2f ScreenCenterCoord, float scaling);
 
+    int getDirectionFromAngle(float angle);
+
+    int calculateDirection(const cv::Point2f& startPoint, const cv::Point2f& endPoint);
+
+    std::vector<int> convertCoordinatesToDirections(const std::deque<cv::Point2f>& coordSequence);
+
+    int getLabelFromCoord(const cv::Point2f& point);
+
+    cv::Point2f getLabelCenter(int label);
+
+    std::vector<int> getNeighboringLabels(int label);
 }
 #endif // MAPPING_SCREEN_H

@@ -27,6 +27,7 @@ namespace Utilities
 		void SetGrid(int screen_width, int screen_height, int grid_size);
 
 		cv::Mat GetVisImage();
+		void drawCircleAsync(cv::Point2f center);
 		char ShowTrack();
 
 		// 트랙바 값
