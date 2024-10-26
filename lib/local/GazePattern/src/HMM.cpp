@@ -109,6 +109,7 @@ void HMM::baum_welch(const std::vector<int>& obs, int n_iters) {
         }
 
         // log_beta 출력
+        /*
         std::cout << "Log Beta:" << std::endl;
         for (int n = 0; n < N; n++) {
             for (int k = 0; k < num_states; k++) {
@@ -116,6 +117,7 @@ void HMM::baum_welch(const std::vector<int>& obs, int n_iters) {
             }
             std::cout << std::endl;
         }
+        */
 
         // 감마 및 시 계산
         double log_evidence = logsumexp(log_alpha[N - 1].data(), num_states);

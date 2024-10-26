@@ -146,7 +146,7 @@ char UI::ShowUI()
 }
 
 // 이미지 설정 함수
-void UI::SetImage(const cv::Mat& canvas, float fx, float fy, float cx, float cy, int screen_width, int screen_height)
+void UI::SetImage(const cv::Mat& canvas, int screen_width, int screen_height)
 {
     cv::resize(canvas.clone(), captured_image, cv::Size(screen_width, screen_height));
     cv::flip(captured_image, captured_image, 1);
@@ -163,14 +163,27 @@ void UI::SetScreenCoord(cv::Point2f rightScreenCoord, cv::Point2f leftScreenCoor
 
 }
 
+void UI::SetRedScreenCoord(cv::Point2f screen_center){
+
+	cv::Scalar red = CV_RGB(255, 0, 0); // 빨간색
+
+    cv::circle(captured_image, screen_center, 5, red, 20);
+
+}
+
 void UI::ShowCoord(cv::Point2f coord){
 	cv::Scalar color = CV_RGB(0, 255, 0); 
 	cv::circle(captured_image, coord, 20, color, 20);
 }
 
-char UI::ShowTrack(){
+char UI::ShowTrack(int screen_width, int screen_height){
 
     bool ovservation_shown = false;
+
+    // 정확한 크기의 창 생성
+    cv::namedWindow("tracking result", cv::WINDOW_NORMAL);  // 창 크기 조절 가능
+    cv::resizeWindow("tracking result", screen_width, screen_height);  // 창 크기 설정
+
     cv::imshow("tracking result", captured_image);
     ovservation_shown = true;
 

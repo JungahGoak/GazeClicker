@@ -62,6 +62,35 @@ std::vector<std::string> get_arguments(int argc, char **argv)
 std::deque<cv::Point2f> coord_sequence;
 std::vector<std::unique_ptr<GazePattern::HMM>> hmm_models(GRID_SIZE*GRID_SIZE);
 
+// 초기 설정: 8방향 기울기 배열과 절편
+std::vector<double> slopes(8, 0.2);  // 초기 기울기는 모두 1
+double intercept = 60;               // 초기 절편 값
+double correction_rate = 0.001;        // 보정 비율
+
+void updateSlope(cv::Point2f lastCoord, cv::Point2f clickCoord) {
+	cv::Point2f screen_center = cv::Point2f(screen_width/2, screen_height/2);
+    int direction = MappingScreen::calculateDirection(screen_center, clickCoord);  // 방향 계산
+	double distance_from_center = cv::norm(clickCoord - screen_center);
+
+    // 예측된 좌표와 실제 클릭 간의 오차 계산
+    double error_x = clickCoord.x - lastCoord.x;
+    double error_y = clickCoord.y - lastCoord.y;
+    double error = error_x + error_y;
+
+    // 동적 보정 비율 계산
+    double dynamic_correction = correction_rate * error;
+
+    // 기울기 보정 (최소값을 0으로 제한)
+    slopes[direction] = std::max(10.0, slopes[direction] + dynamic_correction * (error + distance_from_center));
+
+    std::cout << "Updated slope for direction " << direction << ": " << slopes[direction] << std::endl;
+	std::cout << "Current slopes: ";
+    for (int i = 0; i < slopes.size(); ++i) {
+        std::cout << "Direction " << i << ": " << slopes[i] << " ";
+    }
+    std::cout << std::endl;
+
+}
 
 static void updateSequence(cv::Point2f newCoord) {
     if (coord_sequence.size() >= COORD_SEQUENCE_LENGTH) {
@@ -97,6 +126,11 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
             int clickedLabel = MappingScreen::getLabelFromCoord(cv::Point2f(mouseLocation.x, mouseLocation.y));
 			std::cout << "====> 클릭 좌표 변환(label): " << clickedLabel <<std::endl;
 
+			// 최근 좌표와 클릭된 좌표 비교 후 기울기 업데이트
+			if (!coord_sequence.empty()) {
+				updateSlope(coord_sequence.back(), cv::Point2f(mouseLocation.x, mouseLocation.y));  // 기울기 업데이트
+			}
+
             // 클릭된 라벨에 해당하는 HMM 모델 유무 확인
             if (hmm_models[clickedLabel] == nullptr) {
                 // 해당 라벨에 대한 HMM 모델이 없으면 새로 생성
@@ -107,7 +141,7 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
             // 해당 라벨의 HMM 모델 업데이트
             GazePattern::HMM& selectedHMM = *hmm_models[clickedLabel];
             selectedHMM.baum_welch(directionSequence, 1);
-            selectedHMM.print_matrices();
+            //selectedHMM.print_matrices();
 
             std::cout << "HMM updated with sequence and clicked label: " << clickedLabel << std::endl;
         } else {
@@ -288,8 +322,21 @@ int main(int argc, char **argv){
 				// 화면 중심점
 				screen_center = cv::Point2f(screen_width/2, screen_height/2);  
 				
+				// 화면 매핑
 				rightScreenCoord = MappingScreen::GetScreenCoord(rightGazeCoord, rightEyePoint, screen_center, scaling);
 				leftScreenCoord = MappingScreen::GetScreenCoord(leftGazeCoord, leftEyePoint, screen_center, scaling);
+				
+				screen_coord = (rightScreenCoord + leftScreenCoord) / 2;
+				
+				// 중심과 화면 좌표 간 거리 계산
+				double distance_from_center = cv::norm(screen_coord - screen_center);
+				//std::cout << "Distance from center: " << distance_from_center << std::endl;
+				int direction = MappingScreen::calculateDirection(screen_center, screen_coord);
+				std::cout << "Calculated direction: " << direction << " // " << slopes[direction]* distance_from_center + intercept<< std::endl;
+
+				// slopes
+				rightScreenCoord = MappingScreen::GetScreenCoord(rightGazeCoord, rightEyePoint, screen_center, slopes[direction]*distance_from_center + intercept);
+				leftScreenCoord = MappingScreen::GetScreenCoord(leftGazeCoord, leftEyePoint, screen_center, slopes[direction]* distance_from_center + intercept);
 				
 				screen_coord = (rightScreenCoord + leftScreenCoord) / 2;
 				
@@ -304,11 +351,11 @@ int main(int argc, char **argv){
             // Keeping track of FPS
 			fps_tracker.AddFrame();
 			
-			ui.SetImage(captured_image, sequence_reader.fx, sequence_reader.fy, sequence_reader.cx, sequence_reader.cy, screen_width, screen_height);
-			ui.SetScreenCoord(rightScreenCoord, leftScreenCoord, screen_coord);
+			ui.SetImage(captured_image, screen_width, screen_height);
+			ui.SetRedScreenCoord(screen_coord);
 			ui.SetGrid(screen_width, screen_height, GRID_SIZE);
 
-			char ui_press = ui.ShowTrack();
+			char ui_press = ui.ShowTrack(screen_width, screen_height);
 			
 			// quit processing the current sequence (useful when in Webcam mode)
 			if (ui_press == 'q')
