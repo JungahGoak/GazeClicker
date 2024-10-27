@@ -15,7 +15,9 @@
 #include <VisualizationUtils.h>
 #include <KalmanFilter.h>
 #include <UI.h>
+#include "Click.h"
 
+#include <algorithm>
 #include <ApplicationServices/ApplicationServices.h> // Quartz Event Services를 위한 헤더
 
 #ifndef CONFIG_DIR
@@ -51,21 +53,13 @@ std::vector<std::string> get_arguments(int argc, char **argv)
 	return arguments;
 }
 
-// int NUM_STATES = 10;
-// int NUM_OBSERVATIONS = 8;
-
-// int screen_width;
-// int screen_height;
-
-// const int COORD_SEQUENCE_LENGTH = 10;
-// int GRID_SIZE = 10;
 std::deque<cv::Point2f> coord_sequence;
 std::vector<std::unique_ptr<GazePattern::HMM>> hmm_models(GRID_SIZE*GRID_SIZE);
 
 // 초기 설정: 8방향 기울기 배열과 절편
-std::vector<double> slopes(8, 0.2);  // 초기 기울기는 모두 1
+std::vector<double> slopes(8, 0.1);  // 초기 기울기는 모두 0.1
 double intercept = 60;               // 초기 절편 값
-double correction_rate = 0.001;        // 보정 비율
+double correction_rate = 0.0001;        // 보정 비율
 
 void updateSlope(cv::Point2f lastCoord, cv::Point2f clickCoord) {
 	cv::Point2f screen_center = cv::Point2f(screen_width/2, screen_height/2);
@@ -92,11 +86,14 @@ void updateSlope(cv::Point2f lastCoord, cv::Point2f clickCoord) {
 
 }
 
+Utilities::Click clickManager;
+
 static void updateSequence(cv::Point2f newCoord) {
     if (coord_sequence.size() >= COORD_SEQUENCE_LENGTH) {
         coord_sequence.pop_front();
     }
     coord_sequence.push_back(newCoord);
+	clickManager.updateFixation(newCoord, coord_sequence);
 }
 
 // 마우스 이벤트 콜백 함수
@@ -179,13 +176,11 @@ void startMouseEventLoop() {
     CFRunLoopRun();
 }
 
-// 예측 영역 저장
-bool check_predict = false;
-
-// 2초 후에 check_predict를 false로 만드는 함수
-void clearPredictionAfterDelay() {
-    std::this_thread::sleep_for(std::chrono::seconds(2)); // 2초 대기
-    check_predict = false;  // check_predict를 false로 설정
+// screen_coord가 화면 크기를 벗어나지 않도록 범위 제한
+cv::Point2f clampToScreen(const cv::Point2f& coord) {
+    float clamped_x = std::clamp(coord.x, 0.0f, static_cast<float>(screen_width - 1));
+    float clamped_y = std::clamp(coord.y, 0.0f, static_cast<float>(screen_height - 1));
+    return cv::Point2f(clamped_x, clamped_y);
 }
 
 int main(int argc, char **argv){
@@ -343,9 +338,13 @@ int main(int argc, char **argv){
 				kf.predict();
 				kf.correct(screen_coord);
 				screen_coord = kf.getCorrectedPosition();
-
+				screen_coord = clampToScreen(screen_coord);
 				// coordinateSeqeunce에 추가
 				updateSequence(screen_coord);
+
+				std::cout << "Screen Coord: (" << screen_coord.x << ", " << screen_coord.y << ")" << std::endl;
+    			std::cout << "Screen Size: (" << screen_width << " x " << screen_height << ")" << std::endl;
+
 			}
 
             // Keeping track of FPS
