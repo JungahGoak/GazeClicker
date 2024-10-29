@@ -184,15 +184,16 @@ void UI::SetPopup(cv::Point2f gazePoint, cv::Point2f popupCoord){
     cv::Scalar yesColor(102, 178, 255);  // 파란색 (YES)
     cv::Scalar noColor(102, 178, 255);   // 파란색 (NO)
 
-    // 시선이 YES 버튼 안에 있으면 빨간색으로 표시
-    if (yesButton.contains(gazePoint)) {
+    int midX = (yesButton.x + yesButton.width + noButton.x) / 2;
+
+    // YES 버튼 안에 있으면 빨간색으로 표시
+    if (gazePoint.x < midX) {
         yesColor = cv::Scalar(0, 0, 255);  // 빨간색
         isYesSelected = true;
         isNoSelected = false;
         std::cout << "Gaze on YES button" << std::endl;
     }
-    // 시선이 NO 버튼 안에 있으면 빨간색으로 표시
-    else if (noButton.contains(gazePoint)) {
+    else {
         noColor = cv::Scalar(0, 0, 255);  // 빨간색
         isNoSelected = true;
         isYesSelected = false;

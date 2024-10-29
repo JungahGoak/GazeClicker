@@ -285,7 +285,6 @@ int main(int argc, char **argv){
 				
 				// 중심과 화면 좌표 간 거리 계산
 				double distance_from_center = cv::norm(screen_coord - screen_center);
-				//std::cout << "Distance from center: " << distance_from_center << std::endl;
 				int direction = MappingScreen::calculateDirection(screen_center, screen_coord);
 				std::cout << "Calculated direction: " << direction << " // " << gazeCoord.slopes[direction]* distance_from_center + gazeCoord.intercept<< std::endl;
 
@@ -299,10 +298,10 @@ int main(int argc, char **argv){
 				kf.correct(screen_coord);
 				screen_coord = kf.getCorrectedPosition();
 				screen_coord = clampToScreen(screen_coord);
+				// dwell time 확인
+				clickManager.updateDwellTime(screen_coord, gazeCoord);
 				// coordinateSeqeunce에 추가
 				gazeCoord.updateSequence(screen_coord);
-				// dwell time 확인
-				clickManager.updateFixation(screen_coord, gazeCoord);
 
 			}
 
@@ -310,8 +309,8 @@ int main(int argc, char **argv){
 			fps_tracker.AddFrame();
 			
 			ui.SetImage(captured_image, screen_width, screen_height);
-			if (gazeCoord.isClickTrigger == true){
-				ui.SetPopup(screen_coord, screen_coord);
+			if (gazeCoord.getIsClickTrigger() == true){
+				ui.SetPopup(screen_coord, gazeCoord.clickCoord);
 			}
 			ui.SetRedScreenCoord(screen_coord);
 			ui.SetGrid(screen_width, screen_height, GRID_SIZE);

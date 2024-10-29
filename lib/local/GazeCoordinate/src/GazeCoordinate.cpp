@@ -15,7 +15,7 @@ GazeCoordinate::GazeCoordinate():
     intercept(50.0), 
     correction_rate(0.0001),
     isClickTrigger(false),
-    statusDwellTime(false) {
+    isDwellTime(false) {
     setScreenSize();
 }
 
@@ -49,6 +49,31 @@ void GazeCoordinate::updateSequence(cv::Point2f newCoord) {
         coord_sequence.pop_front();
     }
     coord_sequence.push_back(newCoord);
+}
+
+// isDwellTime의 getter (뮤텍스 보호)
+bool GazeCoordinate::getIsDwellTime() {
+    std::lock_guard<std::mutex> lock(dwellTimeMutex);  // 뮤텍스 잠금
+    return isDwellTime;
+}
+
+// isDwellTime의 setter (뮤텍스 보호)
+void GazeCoordinate::setIsDwellTime(bool value, std::chrono::steady_clock::time_point startTime) {
+    std::lock_guard<std::mutex> lock(dwellTimeMutex);  // 뮤텍스 잠금
+    isDwellTime = value;
+    startedDwellTime = startTime;
+}
+
+// isClickTrigger의 getter (뮤텍스 보호)
+bool GazeCoordinate::getIsClickTrigger() {
+    std::lock_guard<std::mutex> lock(clickTriggerMutex);  // 뮤텍스 잠금
+    return isClickTrigger;
+}
+
+// isClickTrigger의 setter (뮤텍스 보호)
+void GazeCoordinate::setIsClickTrigger(bool value) {
+    std::lock_guard<std::mutex> lock(clickTriggerMutex);  // 뮤텍스 잠금
+    isClickTrigger = value;
 }
 
 } // namespace GazeCoordinate

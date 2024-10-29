@@ -15,7 +15,7 @@ namespace DwellClick {
         std::chrono::steady_clock::time_point fixation_start;  // 응시 시작 시간
         bool isCounting = false;  // 응시 시간 측정 중인지 여부
         double fixation_threshold = 2.0;  // 응시 임계 시간 (초)
-        double fixation_distance_threshold = 10.0;  // 고정 여부를 판단하는 거리 임계값
+        double fixation_distance_threshold = 30.0;  // 고정 여부를 판단하는 거리 임계값
 
         // 클릭 이벤트 발생
         void triggerClickEvent(const cv::Point2f newCoord, GazeCoordinate::GazeCoordinate& gazeCoord);
@@ -28,7 +28,7 @@ namespace DwellClick {
         void startFixation(GazeCoordinate::GazeCoordinate& gazeCoord);
 
         // 응시 시간 업데이트 및 클릭 이벤트 처리
-        bool updateFixation(const cv::Point2f& newCoord,  GazeCoordinate::GazeCoordinate& gazeCoord);
+        bool updateDwellTime(const cv::Point2f& cur_screen_coord, GazeCoordinate::GazeCoordinate& gazeCoord);
 
         
     };

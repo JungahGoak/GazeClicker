@@ -6,6 +6,7 @@
 #include <deque>
 #include <opencv2/core.hpp>
 #include <chrono>
+#include <mutex>
 
 #include "GazePattern.h"
 #include "GazeClickerConfig.h"
@@ -28,14 +29,24 @@ namespace GazeCoordinate
             void updateSequence(cv::Point2f newCoord);
             double intercept; // slope 초기 절편 값
 
-            // dwell time
-            bool statusDwellTime;
+            bool getIsDwellTime();
+            void setIsDwellTime(bool value, std::chrono::steady_clock::time_point startTime);
+
+            bool getIsClickTrigger();
+            void setIsClickTrigger(bool value);
+            
             std::chrono::steady_clock::time_point startedDwellTime;
+            cv::Point2f clickCoord;
 
-            // click popup
-            bool isClickTrigger; // ClickTrigger 실행 시 사용할 변수
+        private:
 
-        private:          
+            // 내부 멤버 변수와 뮤텍스
+            bool isDwellTime = false;
+            bool isClickTrigger = false;
+
+            std::mutex dwellTimeMutex;  // DwellTime용 뮤텍스
+            std::mutex clickTriggerMutex;  // ClickTrigger용 뮤텍스
+
             double correction_rate;        // slope 보정 비율
     };
 }

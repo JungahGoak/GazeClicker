@@ -19,15 +19,14 @@ bool Click::isFixation(const cv::Point2f& currentCoord, const std::deque<cv::Poi
 
 // 응시 시간 측정 시작
 void Click::startFixation(GazeCoordinate::GazeCoordinate& gazeCoord) {
-    gazeCoord.startedDwellTime = std::chrono::steady_clock::now();
-    gazeCoord.statusDwellTime = true;
+    gazeCoord.setIsDwellTime(true, std::chrono::steady_clock::now());
     std::cout << "Fixation started." << std::endl;
 }
 
 // 응시 시간 업데이트 및 클릭 이벤트 처리
-bool Click::updateFixation(const cv::Point2f& cur_screen_coord, GazeCoordinate::GazeCoordinate& gazeCoord) {
+bool Click::updateDwellTime(const cv::Point2f& cur_screen_coord, GazeCoordinate::GazeCoordinate& gazeCoord) {
     if (isFixation(cur_screen_coord, gazeCoord.coord_sequence)) {
-        if (!gazeCoord.statusDwellTime) {
+        if (!gazeCoord.getIsDwellTime()) {
             startFixation(gazeCoord);  // 응시 시간 측정 시작
         } else {
             // 응시 시간 확인
@@ -38,20 +37,20 @@ bool Click::updateFixation(const cv::Point2f& cur_screen_coord, GazeCoordinate::
 
             if (duration >= fixation_threshold) {
                 std::cout << "Fixation confirmed. Triggering click event." << std::endl;
+                gazeCoord.clickCoord = cur_screen_coord;
 
                 // triggerClickEvent를 새로운 스레드에서 실행
                 std::thread clickThread(&Click::triggerClickEvent, this, cur_screen_coord, std::ref(gazeCoord));
                 clickThread.detach();  // 스레드를 분리
-                //triggerClickEvent(cur_screen_coord, gazeCoord);
-                
-                gazeCoord.statusDwellTime = false;  // 시간 측정 종료
+                 // 시간 측정 종료
+
                 return true;
             }
         }
     } else {
         // 고정 해제 시 타이머 초기화
-        gazeCoord.statusDwellTime = false;
-        gazeCoord.startedDwellTime = std::chrono::steady_clock::time_point();
+        gazeCoord.setIsDwellTime(false, std::chrono::steady_clock::time_point());
+        
         std::cout << "Fixation lost. Timer reset." << std::endl;
     }
     return false;
@@ -59,15 +58,25 @@ bool Click::updateFixation(const cv::Point2f& cur_screen_coord, GazeCoordinate::
 
 // 클릭 이벤트 발생 함수
 void Click::triggerClickEvent(const cv::Point2f cur_screen_coord, GazeCoordinate::GazeCoordinate& gazeCoord) {
+
+
     std::cout << "Click event triggered!" << cur_screen_coord << std::endl;
-    gazeCoord.isClickTrigger = true;
+    gazeCoord.setIsClickTrigger(true);
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     // 2초 후 isClickTrigger를 false로 설정
-    gazeCoord.isClickTrigger = false;
-    gazeCoord.startedDwellTime = std::chrono::steady_clock::time_point();
-    gazeCoord.statusDwellTime = false;
+    gazeCoord.setIsClickTrigger(false);
+    gazeCoord.setIsDwellTime(false, std::chrono::steady_clock::time_point());
+
     std::cout << "isClickTrigger set to false after 2 seconds." << std::endl;
+
+    // 종료 시 yes, no인지 판단하고 클릭 이벤트 실행
+    // 현재 x좌표가 클릭좌표보다 오른쪽이면 yes, 아니면 no
+    if (cur_screen_coord.x > gazeCoord.clickCoord.x){
+        std::cout << "YYYYYEEEEESSSSSS" << std::endl;
+    } else {
+        std::cout << "NNNNOOOOOOOOOOOO" << std::endl;
+    }
 }
 
 }  // namespace Utilities
