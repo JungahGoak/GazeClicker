@@ -11,7 +11,7 @@ namespace Utilities
 	class UI {
 
 	public:
-		UI(std::vector<std::string> arguments);
+		UI();
 		
 		// 이미지 및 트랙바 설정
 		void SetImage(const cv::Mat& canvas, int screen_width, int screen_height);
@@ -26,6 +26,7 @@ namespace Utilities
 		void SetRedScreenCoord(cv::Point2f screen_center);
 		void ShowCoord(cv::Point2f coord);
 		void SetGrid(int screen_width, int screen_height, int grid_size);
+		void SetPopup(cv::Point2f gazePoint, cv::Point2f popupCoord);
 
 		cv::Mat GetVisImage();
 		void drawCircleAsync(cv::Point2f center);

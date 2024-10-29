@@ -16,6 +16,7 @@
 #include <KalmanFilter.h>
 #include <UI.h>
 #include "Click.h"
+#include "GazeCoordinate.h"
 
 #include <algorithm>
 #include <ApplicationServices/ApplicationServices.h> // Quartz Event Services를 위한 헤더
@@ -53,48 +54,8 @@ std::vector<std::string> get_arguments(int argc, char **argv)
 	return arguments;
 }
 
-std::deque<cv::Point2f> coord_sequence;
-std::vector<std::unique_ptr<GazePattern::HMM>> hmm_models(GRID_SIZE*GRID_SIZE);
 
-// 초기 설정: 8방향 기울기 배열과 절편
-std::vector<double> slopes(8, 0.1);  // 초기 기울기는 모두 0.1
-double intercept = 60;               // 초기 절편 값
-double correction_rate = 0.0001;        // 보정 비율
-
-void updateSlope(cv::Point2f lastCoord, cv::Point2f clickCoord) {
-	cv::Point2f screen_center = cv::Point2f(screen_width/2, screen_height/2);
-    int direction = MappingScreen::calculateDirection(screen_center, clickCoord);  // 방향 계산
-	double distance_from_center = cv::norm(clickCoord - screen_center);
-
-    // 예측된 좌표와 실제 클릭 간의 오차 계산
-    double error_x = clickCoord.x - lastCoord.x;
-    double error_y = clickCoord.y - lastCoord.y;
-    double error = error_x + error_y;
-
-    // 동적 보정 비율 계산
-    double dynamic_correction = correction_rate * error;
-
-    // 기울기 보정 (최소값을 0으로 제한)
-    slopes[direction] = std::max(10.0, slopes[direction] + dynamic_correction * (error + distance_from_center));
-
-    std::cout << "Updated slope for direction " << direction << ": " << slopes[direction] << std::endl;
-	std::cout << "Current slopes: ";
-    for (int i = 0; i < slopes.size(); ++i) {
-        std::cout << "Direction " << i << ": " << slopes[i] << " ";
-    }
-    std::cout << std::endl;
-
-}
-
-Utilities::Click clickManager;
-
-static void updateSequence(cv::Point2f newCoord) {
-    if (coord_sequence.size() >= COORD_SEQUENCE_LENGTH) {
-        coord_sequence.pop_front();
-    }
-    coord_sequence.push_back(newCoord);
-	clickManager.updateFixation(newCoord, coord_sequence);
-}
+GazeCoordinate::GazeCoordinate gazeCoord;
 
 // 마우스 이벤트 콜백 함수
 CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *userInfo) {
@@ -104,10 +65,10 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
         CGPoint mouseLocation = CGEventGetLocation(event);
 		
         // 좌표 시퀀스의 크기가 맞으면 HMM 파라미터 업데이트
-        if (coord_sequence.size() == COORD_SEQUENCE_LENGTH) {
+        if (gazeCoord.coord_sequence.size() == COORD_SEQUENCE_LENGTH) {
 
             // 좌표 시퀀스를 관측 심볼(1~8)로 변환
-            std::vector<int> directionSequence = MappingScreen::convertCoordinatesToDirections(coord_sequence);
+            std::vector<int> directionSequence = MappingScreen::convertCoordinatesToDirections(gazeCoord.coord_sequence);
 			
 			// 1~8 변환된 방향 시퀀스 출력
 			std::cout << "==> 좌표 시퀀스 변환(1~8): ";
@@ -124,25 +85,25 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
 			std::cout << "====> 클릭 좌표 변환(label): " << clickedLabel <<std::endl;
 
 			// 최근 좌표와 클릭된 좌표 비교 후 기울기 업데이트
-			if (!coord_sequence.empty()) {
-				updateSlope(coord_sequence.back(), cv::Point2f(mouseLocation.x, mouseLocation.y));  // 기울기 업데이트
+			if (!gazeCoord.coord_sequence.empty()) {
+				gazeCoord.updateSlope(gazeCoord.coord_sequence.back(), cv::Point2f(mouseLocation.x, mouseLocation.y));  // 기울기 업데이트
 			}
 
             // 클릭된 라벨에 해당하는 HMM 모델 유무 확인
-            if (hmm_models[clickedLabel] == nullptr) {
+            if (gazeCoord.hmm_models[clickedLabel] == nullptr) {
                 // 해당 라벨에 대한 HMM 모델이 없으면 새로 생성
-                hmm_models[clickedLabel] = std::make_unique<GazePattern::HMM>(NUM_STATES, NUM_OBSERVATIONS);
+                gazeCoord.hmm_models[clickedLabel] = std::make_unique<GazePattern::HMM>(NUM_STATES, NUM_OBSERVATIONS);
                 std::cout << "HMM created for label: " << clickedLabel << std::endl;
             }
 
             // 해당 라벨의 HMM 모델 업데이트
-            GazePattern::HMM& selectedHMM = *hmm_models[clickedLabel];
+            GazePattern::HMM& selectedHMM = *gazeCoord.hmm_models[clickedLabel];
             selectedHMM.baum_welch(directionSequence, 1);
             //selectedHMM.print_matrices();
 
             std::cout << "HMM updated with sequence and clicked label: " << clickedLabel << std::endl;
         } else {
-            std::cerr << "Sequence size mismatch. Current sequence size: " << coord_sequence.size() << ", Expected: " << COORD_SEQUENCE_LENGTH << std::endl;
+            std::cerr << "Sequence size mismatch. Current sequence size: " << gazeCoord.coord_sequence.size() << ", Expected: " << COORD_SEQUENCE_LENGTH << std::endl;
         }
     }
     return event;  // 다른 이벤트 처리로 전달
@@ -185,13 +146,12 @@ cv::Point2f clampToScreen(const cv::Point2f& coord) {
 
 int main(int argc, char **argv){
 
-	// 화면 크기 자동 설정
-    setScreenSize();
+	Utilities::UI& ui = gazeCoord.ui;
+	DwellClick::Click clickManager;
 
 	std::vector<std::string> arguments = get_arguments(argc, argv);
 
 	// UI 생성
-	Utilities::UI ui(arguments);
 	ui.CreateTrackbars(50, 70);
 	ui.ShowUI();
 
@@ -325,13 +285,12 @@ int main(int argc, char **argv){
 				
 				// 중심과 화면 좌표 간 거리 계산
 				double distance_from_center = cv::norm(screen_coord - screen_center);
-				//std::cout << "Distance from center: " << distance_from_center << std::endl;
 				int direction = MappingScreen::calculateDirection(screen_center, screen_coord);
-				std::cout << "Calculated direction: " << direction << " // " << slopes[direction]* distance_from_center + intercept<< std::endl;
+				std::cout << "Calculated direction: " << direction << " // " << gazeCoord.slopes[direction]* distance_from_center + gazeCoord.intercept<< std::endl;
 
 				// slopes
-				rightScreenCoord = MappingScreen::GetScreenCoord(rightGazeCoord, rightEyePoint, screen_center, slopes[direction]*distance_from_center + intercept);
-				leftScreenCoord = MappingScreen::GetScreenCoord(leftGazeCoord, leftEyePoint, screen_center, slopes[direction]* distance_from_center + intercept);
+				rightScreenCoord = MappingScreen::GetScreenCoord(rightGazeCoord, rightEyePoint, screen_center, gazeCoord.slopes[direction]*distance_from_center + gazeCoord.intercept);
+				leftScreenCoord = MappingScreen::GetScreenCoord(leftGazeCoord, leftEyePoint, screen_center, gazeCoord.slopes[direction]* distance_from_center + gazeCoord.intercept);
 				
 				screen_coord = (rightScreenCoord + leftScreenCoord) / 2;
 				
@@ -339,11 +298,10 @@ int main(int argc, char **argv){
 				kf.correct(screen_coord);
 				screen_coord = kf.getCorrectedPosition();
 				screen_coord = clampToScreen(screen_coord);
+				// dwell time 확인
+				clickManager.updateDwellTime(screen_coord, gazeCoord);
 				// coordinateSeqeunce에 추가
-				updateSequence(screen_coord);
-
-				std::cout << "Screen Coord: (" << screen_coord.x << ", " << screen_coord.y << ")" << std::endl;
-    			std::cout << "Screen Size: (" << screen_width << " x " << screen_height << ")" << std::endl;
+				gazeCoord.updateSequence(screen_coord);
 
 			}
 
@@ -351,6 +309,9 @@ int main(int argc, char **argv){
 			fps_tracker.AddFrame();
 			
 			ui.SetImage(captured_image, screen_width, screen_height);
+			if (gazeCoord.getIsClickTrigger() == true){
+				ui.SetPopup(screen_coord, gazeCoord.clickCoord);
+			}
 			ui.SetRedScreenCoord(screen_coord);
 			ui.SetGrid(screen_width, screen_height, GRID_SIZE);
 
@@ -365,9 +326,9 @@ int main(int argc, char **argv){
 			// HMM predict
 			if (ui_press == 'p')
 			{
-				if (coord_sequence.size() == COORD_SEQUENCE_LENGTH)
+				if (gazeCoord.coord_sequence.size() == COORD_SEQUENCE_LENGTH)
 				{
-					GazePattern::predict(hmm_models, coord_sequence);
+					GazePattern::predict(gazeCoord.hmm_models, gazeCoord.coord_sequence);
 				}
 			}
 

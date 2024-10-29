@@ -16,6 +16,8 @@ add_executable(GazeClicker ${SOURCE})
 # include 디렉터리 설정
 target_include_directories(GazeClicker PUBLIC
     ${CMAKE_SOURCE_DIR}/../../lib/local/GazePattern/include
+    ${CMAKE_SOURCE_DIR}/../../lib/local/GazeCoordiante/include
+    ${CMAKE_SOURCE_DIR}/../../lib/local/DwellClick/include
     ${CMAKE_SOURCE_DIR}/../../lib/local/MappingScreen/include
     ${CMAKE_SOURCE_DIR}/../../lib/local/LandmarkDetector/include
     ${CMAKE_SOURCE_DIR}/../../lib/local/Utilities/include
@@ -29,6 +31,8 @@ target_link_libraries(GazeClicker PUBLIC
     Utilities
     MappingScreen
     GazePattern
+    GazeCoordinate
+    DwellClick
 )
 
 # macOS 필수 라이브러리 링크

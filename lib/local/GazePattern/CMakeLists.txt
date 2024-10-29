@@ -1,13 +1,12 @@
 # 필요한 라이브러리 경로 포함
 include_directories(../../local/LandmarkDetector/include)
 include_directories(../../local/Utilities/include)
-include_directories(../../local/MappingScreen/include)  # MappingScreen 경로 포함
+include_directories(../../local/MappingScreen/include)
 
 # 소스 파일 설정
 SET(SOURCE
     src/HMM.cpp
     src/GazePattern.cpp
-    ../../local/MappingScreen/src/MappingScreen.cpp  # MappingScreen 소스 파일 포함
 )
 
 # 헤더 파일 설정
@@ -15,7 +14,6 @@ SET(HEADERS
     include/HMM.h
     include/GazePattern.h
     include/GazeClickerConfig.h
-    ../../local/MappingScreen/include/MappingScreen.h  # MappingScreen 헤더 포함
 )
 
 # GazePattern 라이브러리 생성
