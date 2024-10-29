@@ -7,7 +7,7 @@
 
 using namespace Utilities;
 
-UI::UI(std::vector<std::string> arguments)
+UI::UI()
     //down_open(false)  // Default option and dropdown state
 {
     //options = {"c", "l", "option1", "option2"};  // 드롭다운 메뉴 옵션 설정
@@ -168,6 +168,46 @@ void UI::SetRedScreenCoord(cv::Point2f screen_center){
 	cv::Scalar red = CV_RGB(255, 0, 0); // 빨간색
 
     cv::circle(captured_image, screen_center, 5, red, 20);
+
+}
+
+void UI::SetPopup(cv::Point2f gazePoint, cv::Point2f popupCoord){
+    
+    // popupCoord 위치에 버튼 설정
+    int buttonWidth = 110, buttonHeight = 60;
+    cv::Rect yesButton(static_cast<int>(popupCoord.x), static_cast<int>(popupCoord.y), buttonWidth, buttonHeight);
+    cv::Rect noButton(static_cast<int>(popupCoord.x) + 150, static_cast<int>(popupCoord.y), buttonWidth, buttonHeight);
+
+    bool isYesSelected = false, isNoSelected = false;
+
+    // 기본 버튼 색상 설정
+    cv::Scalar yesColor(102, 178, 255);  // 파란색 (YES)
+    cv::Scalar noColor(102, 178, 255);   // 파란색 (NO)
+
+    // 시선이 YES 버튼 안에 있으면 빨간색으로 표시
+    if (yesButton.contains(gazePoint)) {
+        yesColor = cv::Scalar(0, 0, 255);  // 빨간색
+        isYesSelected = true;
+        isNoSelected = false;
+        std::cout << "Gaze on YES button" << std::endl;
+    }
+    // 시선이 NO 버튼 안에 있으면 빨간색으로 표시
+    else if (noButton.contains(gazePoint)) {
+        noColor = cv::Scalar(0, 0, 255);  // 빨간색
+        isNoSelected = true;
+        isYesSelected = false;
+        std::cout << "Gaze on NO button" << std::endl;
+    }
+
+    // YES 버튼 그리기
+    cv::rectangle(captured_image, yesButton, yesColor, -1);
+    cv::putText(captured_image, "YES", cv::Point(yesButton.x + 15, yesButton.y + 40),
+                cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(255, 255, 255), 2, cv::LINE_AA);
+
+    // NO 버튼 그리기
+    cv::rectangle(captured_image, noButton, noColor, -1);
+    cv::putText(captured_image, "NO", cv::Point(noButton.x + 15, noButton.y + 40),
+                cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(255, 255, 255), 2, cv::LINE_AA);
 
 }
 
