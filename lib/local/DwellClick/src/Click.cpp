@@ -20,7 +20,6 @@ bool Click::isFixation(const cv::Point2f& currentCoord, const std::deque<cv::Poi
 // 응시 시간 측정 시작
 void Click::startFixation(GazeCoordinate::GazeCoordinate& gazeCoord) {
     gazeCoord.setIsDwellTime(true, std::chrono::steady_clock::now());
-    std::cout << "Fixation started." << std::endl;
 }
 
 // 응시 시간 업데이트 및 클릭 이벤트 처리
@@ -38,11 +37,11 @@ bool Click::updateDwellTime(const cv::Point2f& cur_screen_coord, GazeCoordinate:
             if (duration >= fixation_threshold) {
                 std::cout << "Fixation confirmed. Triggering click event." << std::endl;
                 gazeCoord.clickCoord = cur_screen_coord;
+                gazeCoord.setIsDwellTime(false, std::chrono::steady_clock::time_point());
 
                 // triggerClickEvent를 새로운 스레드에서 실행
                 std::thread clickThread(&Click::triggerClickEvent, this, cur_screen_coord, std::ref(gazeCoord));
-                clickThread.detach();  // 스레드를 분리
-                 // 시간 측정 종료
+                clickThread.detach();
 
                 return true;
             }
@@ -59,20 +58,18 @@ bool Click::updateDwellTime(const cv::Point2f& cur_screen_coord, GazeCoordinate:
 // 클릭 이벤트 발생 함수
 void Click::triggerClickEvent(const cv::Point2f cur_screen_coord, GazeCoordinate::GazeCoordinate& gazeCoord) {
 
-
     std::cout << "Click event triggered!" << cur_screen_coord << std::endl;
     gazeCoord.setIsClickTrigger(true);
-    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::this_thread::sleep_for(std::chrono::seconds(fixation_threshold));
 
     // 2초 후 isClickTrigger를 false로 설정
     gazeCoord.setIsClickTrigger(false);
     gazeCoord.setIsDwellTime(false, std::chrono::steady_clock::time_point());
 
-    std::cout << "isClickTrigger set to false after 2 seconds." << std::endl;
-
     // 종료 시 yes, no인지 판단하고 클릭 이벤트 실행
     // 현재 x좌표가 클릭좌표보다 오른쪽이면 yes, 아니면 no
     if (cur_screen_coord.x > gazeCoord.clickCoord.x){
+        // click event 실행
         std::cout << "YYYYYEEEEESSSSSS" << std::endl;
     } else {
         std::cout << "NNNNOOOOOOOOOOOO" << std::endl;
