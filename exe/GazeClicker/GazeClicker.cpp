@@ -77,7 +77,7 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
 			}
 			std::cout << std::endl;
 
-			// 클릭 좌표 출력ㄴ
+			// 클릭 좌표 출력
 			std::cout << "===> 마우스 클릭 좌표: (" << mouseLocation.x << ", " << mouseLocation.y << ")" << std::endl;
 
             // 클릭된 좌표를 라벨 값으로 변환
@@ -310,7 +310,8 @@ int main(int argc, char **argv){
 			
 			ui.SetImage(captured_image, screen_width, screen_height);
 			if (gazeCoord.getIsClickTrigger() == true){
-				ui.SetPopup(screen_coord, gazeCoord.clickCoord);
+				ui.SetPopup(screen_coord, gazeCoord.click_coord);
+				ui.SetRedScreenCoord(gazeCoord.click_coord);
 			}
 			ui.SetRedScreenCoord(screen_coord);
 			ui.SetGrid(screen_width, screen_height, GRID_SIZE);

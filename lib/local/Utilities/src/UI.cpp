@@ -83,21 +83,6 @@ void UI::CreateTrackbars(int distance, int scaling)
     cv::setMouseCallback("Settings", onMouse, this);
 }
 
-void UI::drawCircleAsync(cv::Point2f center) {
-    // 동그라미 그리기
-    cv::Mat overlay = captured_image.clone();
-    cv::circle(overlay, center, 50, cv::Scalar(0, 0, 255), 3);  // 빨간색 동그라미
-
-    // overlay 이미지를 tracking result에 표시
-    cv::imshow("tracking result", overlay);
-
-    // 2초 후 원래 이미지 복원
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-
-    // 원래 이미지로 복원
-    cv::imshow("tracking result", captured_image);
-}
-
 // 설정된 이미지와 트랙바 창을 표시하는 함수
 char UI::ShowUI()
 {
@@ -120,23 +105,6 @@ char UI::ShowUI()
 
     // 버튼 텍스트 그리기 (그림 위치, 텍스트 내용, 시작 위치, 폰트 종류, 크기, 색깔, 두께)
     cv::putText(button_page, "Setting", textOrg, cv::FONT_HERSHEY_SIMPLEX, fontScale, cv::Scalar(255, 255, 255), 1);
-
-    // 드롭다운 목록이 열려 있을 때
-    /*
-    if (dropdown_open)
-    {
-        for (size_t i = 0; i < options.size(); ++i)
-        {
-            int option_y_start = dropdown_y_start + dropdown_height + i * (option_height + option_spacing);
-            cv::rectangle(button_page, cv::Point(dropdown_x_start, option_y_start), 
-                          cv::Point(dropdown_x_start + dropdown_width, option_y_start + option_height), 
-                          cv::Scalar(70, 70, 70), -1);  // 옵션 배경
-            cv::putText(button_page, options[i], 
-                        cv::Point(dropdown_x_start + 10, option_y_start + option_height / 2 + 5), 
-                        cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(255, 255, 255), 1);  // 옵션 텍스트
-        }
-    }
-    */
 
     // 트랙바가 있는 창에 설정 페이지 표시
     cv::imshow("Settings", button_page);  // 버튼을 그린 페이지를 "Settings" 창에 표시
@@ -171,12 +139,18 @@ void UI::SetRedScreenCoord(cv::Point2f screen_center){
 
 }
 
-void UI::SetPopup(cv::Point2f gazePoint, cv::Point2f popupCoord){
+void UI::SetPopup(cv::Point2f cur_coord, cv::Point2f popup_coord){
     
-    // popupCoord 위치에 버튼 설정
+    // popup_coord 위치에 버튼 설정
     int buttonWidth = 110, buttonHeight = 60;
-    cv::Rect yesButton(static_cast<int>(popupCoord.x), static_cast<int>(popupCoord.y), buttonWidth, buttonHeight);
-    cv::Rect noButton(static_cast<int>(popupCoord.x) + 150, static_cast<int>(popupCoord.y), buttonWidth, buttonHeight);
+
+    cv::Rect yesButton(static_cast<int>(popup_coord.x) - buttonWidth - 10,  // 왼쪽에 YES
+                       static_cast<int>(popup_coord.y) - buttonHeight / 2,  // 세로 중앙 정렬
+                       buttonWidth, buttonHeight);
+
+    cv::Rect noButton(static_cast<int>(popup_coord.x) + 10,  // 오른쪽에 NO
+                      static_cast<int>(popup_coord.y) - buttonHeight / 2, 
+                      buttonWidth, buttonHeight);
 
     bool isYesSelected = false, isNoSelected = false;
 
@@ -187,7 +161,7 @@ void UI::SetPopup(cv::Point2f gazePoint, cv::Point2f popupCoord){
     int midX = (yesButton.x + yesButton.width + noButton.x) / 2;
 
     // YES 버튼 안에 있으면 빨간색으로 표시
-    if (gazePoint.x < midX) {
+    if (cur_coord.x < midX) {
         yesColor = cv::Scalar(0, 0, 255);  // 빨간색
         isYesSelected = true;
         isNoSelected = false;

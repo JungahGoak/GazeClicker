@@ -18,8 +18,10 @@ cv::Point2f predict(
     if (hmm_result.first != -1 and hmm_result.second >= 0.95) {
         std::cout << "===> [예측] HMM 예측: " << hmm_result.first << " with log-likelihood: " << hmm_result.second << std::endl;
         cv::Point2f center = MappingScreen::getLabelCenter(hmm_result.first);
+        return center;
     } else {
         std::cout << "===> [예측] 일반 예측: " << MappingScreen::getLabelFromCoord(coord_sequence[-1]) << " | HMM 예측: " << hmm_result.first << " with log-likelihood: " << hmm_result.second << std::endl;
+        return coord_sequence[-1];
     }
 }
 

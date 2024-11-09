@@ -32,9 +32,12 @@ void GazeCoordinate::updateSlope(cv::Point2f lastCoord, cv::Point2f clickCoord) 
     // 동적 보정 비율 계산
     double dynamic_correction = correction_rate * error;
 
-    // 기울기 보정 (최소값을 0으로 제한)
-    slopes[direction] = std::max(10.0, slopes[direction] + dynamic_correction * (error + distance_from_center));
-
+    // 예측 값이 화면 중심으로부터 멀리 있으면 기울기를 줄이고, 가까이 있으면 늘리는 로직
+    if (distance_from_center < cv::norm(lastCoord - screen_center)) {
+        slopes[direction] = std::max(10.0, slopes[direction] + std::abs(dynamic_correction));
+    } else {
+        slopes[direction] = std::max(10.0, slopes[direction] - std::abs(dynamic_correction));
+    }
     std::cout << "Updated slope for direction " << direction << ": " << slopes[direction] << std::endl;
 	std::cout << "Current slopes: ";
     for (int i = 0; i < slopes.size(); ++i) {

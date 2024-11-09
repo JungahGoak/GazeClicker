@@ -36,7 +36,7 @@ namespace GazeCoordinate
             void setIsClickTrigger(bool value);
             
             std::chrono::steady_clock::time_point startedDwellTime;
-            cv::Point2f clickCoord;
+            cv::Point2f click_coord;
 
         private:
 
