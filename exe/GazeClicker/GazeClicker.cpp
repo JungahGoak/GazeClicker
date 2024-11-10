@@ -54,7 +54,6 @@ std::vector<std::string> get_arguments(int argc, char **argv)
 	return arguments;
 }
 
-
 GazeCoordinate::GazeCoordinate gazeCoord;
 
 // 마우스 이벤트 콜백 함수
@@ -145,6 +144,9 @@ cv::Point2f clampToScreen(const cv::Point2f& coord) {
 }
 
 int main(int argc, char **argv){
+
+	std::cout << "Main 함수 시작" << std::endl;
+		
 
 	Utilities::UI& ui = gazeCoord.ui;
 	DwellClick::Click clickManager;
