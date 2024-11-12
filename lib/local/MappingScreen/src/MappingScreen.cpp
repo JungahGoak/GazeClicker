@@ -65,8 +65,9 @@ std::vector<int> convertCoordinatesToDirections(const std::deque<cv::Point2f>& c
 }
 
 int getLabelFromCoord(const cv::Point2f& point) {
-    int labelRegionWidth = screen_width / GRID_SIZE;
-    int labelRegionHeight = screen_height / GRID_SIZE;
+    int labelRegionWidth = std::ceil(static_cast<float>(screen_width) / GRID_SIZE);
+    int labelRegionHeight = std::ceil(static_cast<float>(screen_height) / GRID_SIZE);
+
 
     int regionX = point.x / labelRegionWidth;
     int regionY = point.y / labelRegionHeight;

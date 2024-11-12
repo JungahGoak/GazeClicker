@@ -94,5 +94,6 @@
         "shared_mutex": "cpp",
         "strstream": "cpp",
         "typeindex": "cpp"
-    }
+    },
+    "python.languageServer": "Pylance"
 }

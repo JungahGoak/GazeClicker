@@ -1,6 +1,12 @@
 // GazeClicker.cpp : 
 
 // Local includes
+
+// OpenCV 헤더 포함을 Objective-C 헤더 포함보다 먼저 수행
+#include <opencv2/opencv.hpp>
+
+#include <ApplicationServices/ApplicationServices.h> // Quartz Event Services를 위한 헤더
+
 #include "LandmarkCoreIncludes.h"
 #include "GazeClickerConfig.h"
 
@@ -19,7 +25,8 @@
 #include "GazeCoordinate.h"
 
 #include <algorithm>
-#include <ApplicationServices/ApplicationServices.h> // Quartz Event Services를 위한 헤더
+
+#include "StatusBarApp.h"
 
 #ifndef CONFIG_DIR
 #define CONFIG_DIR "~"
@@ -81,7 +88,7 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
 
             // 클릭된 좌표를 라벨 값으로 변환
             int clickedLabel = MappingScreen::getLabelFromCoord(cv::Point2f(mouseLocation.x, mouseLocation.y));
-			std::cout << "====> 클릭 좌표 변환(label): " << clickedLabel <<std::endl;
+			std::cout << "====> 클릭 좌표 변환(label): " << clickedLabel << " screen size: " << screen_width << ' ' << screen_height <<std::endl;
 
 			// 최근 좌표와 클릭된 좌표 비교 후 기울기 업데이트
 			if (!gazeCoord.coord_sequence.empty()) {
@@ -143,16 +150,16 @@ cv::Point2f clampToScreen(const cv::Point2f& coord) {
     return cv::Point2f(clamped_x, clamped_y);
 }
 
-int main(int argc, char **argv){
+int runGazeClickerTasks(int argc, char **argv){
 
-	std::cout << "Main 함수 시작" << std::endl;
-		
+	INFO_STREAM( "runGazeClickerTasks" );
 
 	Utilities::UI& ui = gazeCoord.ui;
 	DwellClick::Click clickManager;
 
 	std::vector<std::string> arguments = get_arguments(argc, argv);
 
+	/*
 	// UI 생성
 	ui.CreateTrackbars(50, 70);
 	ui.ShowUI();
@@ -161,10 +168,16 @@ int main(int argc, char **argv){
     while (!ui.IsConfirmed()) {
         cv::waitKey(100);  // 100ms 간격으로 확인 여부 체크
     }
+	
 
 	// User 입력 변수
 	float scaling = ui.scaling;
 	double screen_face_distance = ui.screen_face_distance;
+	*/
+	float scaling = 70;
+	double screen_face_distance = 50;
+
+
 
 	// no arguments: output usage
 	if (arguments.size() == 1)
@@ -318,6 +331,7 @@ int main(int argc, char **argv){
 			ui.SetRedScreenCoord(screen_coord);
 			ui.SetGrid(screen_width, screen_height, GRID_SIZE);
 
+			/*
 			char ui_press = ui.ShowTrack(screen_width, screen_height);
 			
 			// quit processing the current sequence (useful when in Webcam mode)
@@ -334,6 +348,7 @@ int main(int argc, char **argv){
 					GazePattern::predict(gazeCoord.hmm_models, gazeCoord.coord_sequence);
 				}
 			}
+			*/
 
             // Grabbing the next frame in the sequence
 			captured_image = sequence_reader.GetNextFrame();
@@ -349,6 +364,27 @@ int main(int argc, char **argv){
 
     }
 
+    return 0;
+}
+
+// 시선 추적 작업을 백그라운드에서 실행하는 함수
+void StartGazeTrackingInBackground(int argc, char **argv) {
+    std::thread gazeTrackingThread([=]() {
+        runGazeClickerTasks(argc, argv);  // 시선 추적 처리
+        std::cout << "Gaze tracking started in background thread." << std::endl;
+    });
+    gazeTrackingThread.detach();  // 백그라운드에서 독립적으로 실행
+}
+
+int main(int argc, char **argv){
+
+	@autoreleasepool {
+        // 시선 추적 작업을 백그라운드에서 실행
+        StartGazeTrackingInBackground(argc, argv);
+        
+        // 상태바 애플리케이션을 메인 스레드에서 실행
+        CreateStatusBarApp();  
+    }
     return 0;
 
 }
