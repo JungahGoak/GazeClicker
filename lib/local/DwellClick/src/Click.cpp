@@ -34,8 +34,6 @@ bool Click::updateDwellTime(const cv::Point2f& click_coord, GazeCoordinate::Gaze
             auto now = std::chrono::steady_clock::now();
             double duration = std::chrono::duration_cast<std::chrono::milliseconds>(now - gazeCoord.startedDwellTime).count() / 1000.0;
 
-            std::cout << "Fixation duration: " << duration << " seconds" << std::endl;
-
             if (duration >= fixation_threshold) {
                 std::cout << "Fixation confirmed. Triggering click event." << std::endl;
                 gazeCoord.click_coord = click_coord;
@@ -78,7 +76,7 @@ void Click::triggerClickEvent(const cv::Point2f click_coord, GazeCoordinate::Gaz
 
     std::cout << "Click event triggered!" << click_coord << std::endl;
     gazeCoord.setIsClickTrigger(true);
-    std::this_thread::sleep_for(std::chrono::seconds(fixation_threshold));
+    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(fixation_threshold * 1000)));
 
     // 2초 후 isClickTrigger를 false로 설정
     gazeCoord.setIsClickTrigger(false);
@@ -89,9 +87,10 @@ void Click::triggerClickEvent(const cv::Point2f click_coord, GazeCoordinate::Gaz
     if (click_coord.x > gazeCoord.coord_sequence.back().x){
         // click event 실행
         std::cout << "YYYYYEEEEESSSSSS" << std::endl;
+        GazePattern::predict(gazeCoord.hmm_models, gazeCoord.coord_sequence);
         SimulateMouseClick(CGPointMake(click_coord.x, click_coord.y));
     } else {
-        std::cout << "NNNNOOOOOOOOOOOO" << click_coord.x << gazeCoord.coord_sequence.back().x << std::endl;
+        std::cout << "NNNNOOOOOOOOOOOO" <<  "click 좌표: " << click_coord.x << " 예측 좌표: " << gazeCoord.coord_sequence.back().x << std::endl;
     }
 }
 

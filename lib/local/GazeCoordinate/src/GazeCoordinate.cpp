@@ -78,4 +78,16 @@ void GazeCoordinate::setIsClickTrigger(bool value) {
     isClickTrigger = value;
 }
 
+// isClickTrigger의 getter (뮤텍스 보호)
+bool GazeCoordinate::getIsPredictMode() {
+    std::lock_guard<std::mutex> lock(isPredictModeMutex);  // 뮤텍스 잠금
+    return isPredictMode;
+}
+
+// isClickTrigger의 setter (뮤텍스 보호)
+void GazeCoordinate::setIsPredictMode(bool value) {
+    std::lock_guard<std::mutex> lock(isPredictModeMutex);  // 뮤텍스 잠금
+    isPredictMode = value;
+}           
+
 } // namespace GazeCoordinate

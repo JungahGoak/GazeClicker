@@ -24,6 +24,7 @@ namespace GazeCoordinate
             std::deque<cv::Point2f> coord_sequence;
             std::vector<std::unique_ptr<GazePattern::HMM>> hmm_models;
             std::vector<double> slopes;
+            bool isPredictMode = false;  // 초기 상태는 learn mode
 
             void updateSlope(cv::Point2f lastCoord, cv::Point2f clickCoord);
             void updateSequence(cv::Point2f newCoord);
@@ -34,6 +35,9 @@ namespace GazeCoordinate
 
             bool getIsClickTrigger();
             void setIsClickTrigger(bool value);
+
+            bool getIsPredictMode();
+            void setIsPredictMode(bool value);
             
             std::chrono::steady_clock::time_point startedDwellTime;
             cv::Point2f click_coord;
@@ -46,6 +50,7 @@ namespace GazeCoordinate
 
             std::mutex dwellTimeMutex;  // DwellTime용 뮤텍스
             std::mutex clickTriggerMutex;  // ClickTrigger용 뮤텍스
+            std::mutex isPredictModeMutex;
 
             double correction_rate;        // slope 보정 비율
     };

@@ -301,8 +301,7 @@ int runGazeClickerTasks(int argc, char **argv){
 				// 중심과 화면 좌표 간 거리 계산
 				double distance_from_center = cv::norm(screen_coord - screen_center);
 				int direction = MappingScreen::calculateDirection(screen_center, screen_coord);
-				std::cout << "Calculated direction: " << direction << " // " << gazeCoord.slopes[direction]* distance_from_center + gazeCoord.intercept<< std::endl;
-
+				
 				// slopes
 				rightScreenCoord = MappingScreen::GetScreenCoord(rightGazeCoord, rightEyePoint, screen_center, gazeCoord.slopes[direction]*distance_from_center + gazeCoord.intercept);
 				leftScreenCoord = MappingScreen::GetScreenCoord(leftGazeCoord, leftEyePoint, screen_center, gazeCoord.slopes[direction]* distance_from_center + gazeCoord.intercept);
@@ -313,8 +312,10 @@ int runGazeClickerTasks(int argc, char **argv){
 				kf.correct(screen_coord);
 				screen_coord = kf.getCorrectedPosition();
 				screen_coord = clampToScreen(screen_coord);
-				// dwell time 확인
-				clickManager.updateDwellTime(screen_coord, gazeCoord);
+				if (gazeCoord.getIsPredictMode()){
+					// dwell time 확인
+					clickManager.updateDwellTime(screen_coord, gazeCoord);
+				}
 				// coordinateSeqeunce에 추가
 				gazeCoord.updateSequence(screen_coord);
 
@@ -324,31 +325,8 @@ int runGazeClickerTasks(int argc, char **argv){
 			fps_tracker.AddFrame();
 			
 			ui.SetImage(captured_image, screen_width, screen_height);
-			if (gazeCoord.getIsClickTrigger() == true){
-				ui.SetPopup(screen_coord, gazeCoord.click_coord);
-				ui.SetRedScreenCoord(gazeCoord.click_coord);
-			}
 			ui.SetRedScreenCoord(screen_coord);
 			ui.SetGrid(screen_width, screen_height, GRID_SIZE);
-
-			/*
-			char ui_press = ui.ShowTrack(screen_width, screen_height);
-			
-			// quit processing the current sequence (useful when in Webcam mode)
-			if (ui_press == 'q')
-			{
-				break;
-			}
-
-			// HMM predict
-			if (ui_press == 'p')
-			{
-				if (gazeCoord.coord_sequence.size() == COORD_SEQUENCE_LENGTH)
-				{
-					GazePattern::predict(gazeCoord.hmm_models, gazeCoord.coord_sequence);
-				}
-			}
-			*/
 
             // Grabbing the next frame in the sequence
 			captured_image = sequence_reader.GetNextFrame();
