@@ -26,10 +26,8 @@ namespace Utilities
 		void SetRedScreenCoord(cv::Point2f screen_center);
 		void ShowCoord(cv::Point2f coord);
 		void SetGrid(int screen_width, int screen_height, int grid_size);
-		void SetPopup(cv::Point2f gazePoint, cv::Point2f popupCoord);
+		void SetPopup(cv::Point2f cur_coord, cv::Point2f popup_coord);
 
-		cv::Mat GetVisImage();
-		void drawCircleAsync(cv::Point2f center);
 		char ShowTrack(int screen_width, int screen_height);
 
 		// 트랙바 값
@@ -55,7 +53,6 @@ namespace Utilities
 		cv::Mat button_page;
 		cv::Mat button;
         bool confirmed = false; // 사용자 설정 확인 여부
-
 
 		static void onDistanceChange(int pos, void* userdata);  // Distance 트랙바 콜백
 		static void onScalingChange(int pos, void* userdata);   // Scaling 트랙바 콜백

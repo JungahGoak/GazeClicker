@@ -32,7 +32,7 @@ void KalmanFilter::initKalmanfilter() {
     cv::setIdentity(kf.processNoiseCov, cv::Scalar::all(1e-2));
 
     // 측정 노이즈 공분산 행렬 R
-    cv::setIdentity(kf.measurementNoiseCov, cv::Scalar::all(2));
+    cv::setIdentity(kf.measurementNoiseCov, cv::Scalar::all(10));
 
     // 상태 공분산 행렬 P (초기 불확실성)
     cv::setIdentity(kf.errorCovPost, cv::Scalar::all(1));

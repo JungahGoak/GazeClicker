@@ -15,23 +15,6 @@ HMM::HMM(int num_states, int num_observations)
     transition_probabilities.resize(num_states, std::vector<double>(num_states, 1.0 / num_states));
     observation_probabilities.resize(num_states, std::vector<double>(num_observations, 1.0 / num_observations));
 
-    // Initial Transition Matrix 출력
-    std::cout << "Initial Transition Matrix:" << std::endl;
-    for (const auto& row : transition_probabilities) {
-        for (double prob : row) {
-            std::cout << prob << " ";
-        }
-        std::cout << std::endl;
-    }
-
-    // Initial Observation Matrix 출력
-    std::cout << "Initial Observation Matrix:" << std::endl;
-    for (const auto& row : observation_probabilities) {
-        for (double prob : row) {
-            std::cout << prob << " ";
-        }
-        std::cout << std::endl;
-    }
 }
 
 double HMM::logsumexp(const double* array, int length) const {
@@ -66,8 +49,7 @@ void HMM::baum_welch(const std::vector<int>& obs, int n_iters) {
         N - 1, std::vector<std::vector<double>>(num_states, std::vector<double>(num_states)));
 
     for (int iter = 0; iter < n_iters; iter++) {
-        std::cout << "=> baum-welch iteration: " << iter << std::endl;
-
+        
         // Forward step: log_alpha 계산
         for (int k = 0; k < num_states; k++) {
             log_alpha[0][k] = log(1.0 / num_states) + log(observation_probabilities[k][obs[0]]);
@@ -82,15 +64,6 @@ void HMM::baum_welch(const std::vector<int>& obs, int n_iters) {
                 log_alpha[n][k] = logsumexp(temp, num_states) + log(observation_probabilities[k][obs[n]]);
             }
         }
-
-        // log_alpha 출력
-        // std::cout << "Log Alpha:" << std::endl;
-        // for (int n = 0; n < N; n++) {
-        //     for (int k = 0; k < num_states; k++) {
-        //         std::cout << log_alpha[n][k] << " ";
-        //     }
-        //     std::cout << std::endl;
-        // }
 
         // Backward step: log_beta 계산
         for (int k = 0; k < num_states; k++) {
@@ -108,17 +81,6 @@ void HMM::baum_welch(const std::vector<int>& obs, int n_iters) {
             }
         }
 
-        // log_beta 출력
-        /*
-        std::cout << "Log Beta:" << std::endl;
-        for (int n = 0; n < N; n++) {
-            for (int k = 0; k < num_states; k++) {
-                std::cout << log_beta[n][k] << " ";
-            }
-            std::cout << std::endl;
-        }
-        */
-
         // 감마 및 시 계산
         double log_evidence = logsumexp(log_alpha[N - 1].data(), num_states);
 
@@ -127,15 +89,6 @@ void HMM::baum_welch(const std::vector<int>& obs, int n_iters) {
                 log_gamma[n][k] = log_alpha[n][k] + log_beta[n][k] - log_evidence;
             }
         }
-
-        // log_gamma 출력
-        // std::cout << "Log Gamma:" << std::endl;
-        // for (int n = 0; n < N; n++) {
-        //     for (int k = 0; k < num_states; k++) {
-        //         std::cout << log_gamma[n][k] << " ";
-        //     }
-        //     std::cout << std::endl;
-        // }
 
         for (int n = 0; n < N - 1; n++) {
             for (int i = 0; i < num_states; i++) {
@@ -146,17 +99,6 @@ void HMM::baum_welch(const std::vector<int>& obs, int n_iters) {
                 }
             }
         }
-
-        // log_xi 출력
-        // std::cout << "Log Xi:" << std::endl;
-        // for (int n = 0; n < N - 1; n++) {
-        //     for (int i = 0; i < num_states; i++) {
-        //         for (int j = 0; j < num_states; j++) {
-        //             std::cout << log_xi[n][i][j] << " ";
-        //         }
-        //         std::cout << std::endl;
-        //     }
-        // }
 
         // 매개변수 업데이트
         std::vector<std::vector<double>> gamma(N, std::vector<double>(num_states));
@@ -259,17 +201,10 @@ double HMM::calculate_log_likelihood(const std::vector<int>& obs) {
             }
             log_alpha[n][k] = logsumexp(temp, K) + log(observation_probabilities[k][obs[n]]);
         }
-        std::cout << "log_alpha[" << n << "] = ";
-            for (int k = 0; k < K; k++) {
-                std::cout << log_alpha[n][k] << " ";
-            }
-            std::cout << std::endl;
     }
 
     // 전체 로그-발생 확률 계산
     return logsumexp(log_alpha[N - 1].data(), K);
 }
-
-
 
 } // namespace GazePattern

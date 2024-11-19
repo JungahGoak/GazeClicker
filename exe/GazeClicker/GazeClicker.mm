@@ -1,6 +1,12 @@
 // GazeClicker.cpp : 
 
 // Local includes
+
+// OpenCV 헤더 포함을 Objective-C 헤더 포함보다 먼저 수행
+#include <opencv2/opencv.hpp>
+
+#include <ApplicationServices/ApplicationServices.h> // Quartz Event Services를 위한 헤더
+
 #include "LandmarkCoreIncludes.h"
 #include "GazeClickerConfig.h"
 
@@ -19,7 +25,8 @@
 #include "GazeCoordinate.h"
 
 #include <algorithm>
-#include <ApplicationServices/ApplicationServices.h> // Quartz Event Services를 위한 헤더
+
+#include "StatusBarApp.h"
 
 #ifndef CONFIG_DIR
 #define CONFIG_DIR "~"
@@ -54,8 +61,49 @@ std::vector<std::string> get_arguments(int argc, char **argv)
 	return arguments;
 }
 
-
 GazeCoordinate::GazeCoordinate gazeCoord;
+
+// CSV 파일 경로
+const std::string CSV_FILE_PATH = "gaze_click_label45_2.csv";
+
+// 전역 인덱스 변수
+static int globalIndex = 1;  // 처음 시작 값은 1로 설정
+
+void saveDataToCSV(const std::vector<cv::Point2f>& coord_sequence, const cv::Point2f& mouseLocation, int clickedLabel) {
+    // 파일 열기 (쓰기 모드, 파일이 없으면 생성)
+    std::ofstream csvFile(CSV_FILE_PATH, std::ios::app);
+    if (!csvFile.is_open()) {
+        std::cerr << "Failed to open CSV file for writing: " << CSV_FILE_PATH << std::endl;
+        return;
+    }
+
+    // 파일에 헤더 작성 (파일이 비어 있는 경우에만)
+    static bool headerWritten = false;
+    if (!headerWritten) {
+        csvFile << "Index";
+        for (int i = 1; i <= COORD_SEQUENCE_LENGTH; ++i) {
+            csvFile << ",Coord_Sequence" << i << "_x,Coord_Sequence" << i << "_y";
+        }
+        csvFile << ",Coord_Click_x,Coord_Click_y,Click_Label" << std::endl;
+        headerWritten = true;
+    }
+
+    // 데이터 작성
+    csvFile << globalIndex++;  // 인덱스를 작성하고 값 증가
+    for (size_t i = 0; i < COORD_SEQUENCE_LENGTH; ++i) {
+        if (i < coord_sequence.size()) {
+            csvFile << "," << std::fixed << std::setprecision(2)  // 소수점 2자리로 출력
+                    << coord_sequence[i].x << "," << coord_sequence[i].y;
+        } else {
+            csvFile << ",,";  // 빈 좌표는 공백으로 처리
+        }
+    }
+    csvFile << "," << std::fixed << std::setprecision(2) << mouseLocation.x << "," << mouseLocation.y;  // 클릭 좌표
+    csvFile << "," << clickedLabel << std::endl;  // 클릭 라벨
+
+    csvFile.close();  // 파일 닫기
+    std::cout << "Data saved to CSV: " << CSV_FILE_PATH << std::endl;
+}
 
 // 마우스 이벤트 콜백 함수
 CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *userInfo) {
@@ -65,9 +113,10 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
         CGPoint mouseLocation = CGEventGetLocation(event);
 		
         // 좌표 시퀀스의 크기가 맞으면 HMM 파라미터 업데이트
-        if (gazeCoord.coord_sequence.size() == COORD_SEQUENCE_LENGTH) {
+        if (gazeCoord.coord_sequence.size() >= COORD_SEQUENCE_LENGTH) {
 
-            // 좌표 시퀀스를 관측 심볼(1~8)로 변환
+
+			// 좌표 시퀀스를 관측 심볼(1~8)로 변환
             std::vector<int> directionSequence = MappingScreen::convertCoordinatesToDirections(gazeCoord.coord_sequence);
 			
 			// 1~8 변환된 방향 시퀀스 출력
@@ -77,12 +126,17 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
 			}
 			std::cout << std::endl;
 
-			// 클릭 좌표 출력ㄴ
+			// 클릭 좌표 출력
 			std::cout << "===> 마우스 클릭 좌표: (" << mouseLocation.x << ", " << mouseLocation.y << ")" << std::endl;
 
             // 클릭된 좌표를 라벨 값으로 변환
             int clickedLabel = MappingScreen::getLabelFromCoord(cv::Point2f(mouseLocation.x, mouseLocation.y));
-			std::cout << "====> 클릭 좌표 변환(label): " << clickedLabel <<std::endl;
+			std::cout << "====> 클릭 좌표 변환(label): " << clickedLabel << " screen size: " << screen_width << ", " << screen_height <<std::endl;
+
+			// 클릭 좌표 시퀀스와 라벨을 CSV로 저장
+			// std::vector<cv::Point2f> coord_sequence_vector(
+            // gazeCoord.coord_sequence.begin(), gazeCoord.coord_sequence.end());
+			// saveDataToCSV(coord_sequence_vector, cv::Point2f(mouseLocation.x, mouseLocation.y), clickedLabel);
 
 			// 최근 좌표와 클릭된 좌표 비교 후 기울기 업데이트
 			if (!gazeCoord.coord_sequence.empty()) {
@@ -93,7 +147,6 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
             if (gazeCoord.hmm_models[clickedLabel] == nullptr) {
                 // 해당 라벨에 대한 HMM 모델이 없으면 새로 생성
                 gazeCoord.hmm_models[clickedLabel] = std::make_unique<GazePattern::HMM>(NUM_STATES, NUM_OBSERVATIONS);
-                std::cout << "HMM created for label: " << clickedLabel << std::endl;
             }
 
             // 해당 라벨의 HMM 모델 업데이트
@@ -101,7 +154,6 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
             selectedHMM.baum_welch(directionSequence, 1);
             //selectedHMM.print_matrices();
 
-            std::cout << "HMM updated with sequence and clicked label: " << clickedLabel << std::endl;
         } else {
             std::cerr << "Sequence size mismatch. Current sequence size: " << gazeCoord.coord_sequence.size() << ", Expected: " << COORD_SEQUENCE_LENGTH << std::endl;
         }
@@ -144,13 +196,16 @@ cv::Point2f clampToScreen(const cv::Point2f& coord) {
     return cv::Point2f(clamped_x, clamped_y);
 }
 
-int main(int argc, char **argv){
+int runGazeClickerTasks(int argc, char **argv){
+
+	INFO_STREAM( "runGazeClickerTasks" );
 
 	Utilities::UI& ui = gazeCoord.ui;
 	DwellClick::Click clickManager;
 
 	std::vector<std::string> arguments = get_arguments(argc, argv);
 
+	/*
 	// UI 생성
 	ui.CreateTrackbars(50, 70);
 	ui.ShowUI();
@@ -159,10 +214,14 @@ int main(int argc, char **argv){
     while (!ui.IsConfirmed()) {
         cv::waitKey(100);  // 100ms 간격으로 확인 여부 체크
     }
+	
 
 	// User 입력 변수
 	float scaling = ui.scaling;
 	double screen_face_distance = ui.screen_face_distance;
+	*/
+	float scaling = 70;
+	double screen_face_distance = 50;
 
 	// no arguments: output usage
 	if (arguments.size() == 1)
@@ -286,8 +345,7 @@ int main(int argc, char **argv){
 				// 중심과 화면 좌표 간 거리 계산
 				double distance_from_center = cv::norm(screen_coord - screen_center);
 				int direction = MappingScreen::calculateDirection(screen_center, screen_coord);
-				std::cout << "Calculated direction: " << direction << " // " << gazeCoord.slopes[direction]* distance_from_center + gazeCoord.intercept<< std::endl;
-
+				
 				// slopes
 				rightScreenCoord = MappingScreen::GetScreenCoord(rightGazeCoord, rightEyePoint, screen_center, gazeCoord.slopes[direction]*distance_from_center + gazeCoord.intercept);
 				leftScreenCoord = MappingScreen::GetScreenCoord(leftGazeCoord, leftEyePoint, screen_center, gazeCoord.slopes[direction]* distance_from_center + gazeCoord.intercept);
@@ -298,8 +356,10 @@ int main(int argc, char **argv){
 				kf.correct(screen_coord);
 				screen_coord = kf.getCorrectedPosition();
 				screen_coord = clampToScreen(screen_coord);
-				// dwell time 확인
-				clickManager.updateDwellTime(screen_coord, gazeCoord);
+				if (gazeCoord.getIsPredictMode()){
+					// dwell time 확인
+					clickManager.updateDwellTime(screen_coord, gazeCoord);
+				}
 				// coordinateSeqeunce에 추가
 				gazeCoord.updateSequence(screen_coord);
 
@@ -309,28 +369,8 @@ int main(int argc, char **argv){
 			fps_tracker.AddFrame();
 			
 			ui.SetImage(captured_image, screen_width, screen_height);
-			if (gazeCoord.getIsClickTrigger() == true){
-				ui.SetPopup(screen_coord, gazeCoord.clickCoord);
-			}
 			ui.SetRedScreenCoord(screen_coord);
 			ui.SetGrid(screen_width, screen_height, GRID_SIZE);
-
-			char ui_press = ui.ShowTrack(screen_width, screen_height);
-			
-			// quit processing the current sequence (useful when in Webcam mode)
-			if (ui_press == 'q')
-			{
-				break;
-			}
-
-			// HMM predict
-			if (ui_press == 'p')
-			{
-				if (gazeCoord.coord_sequence.size() == COORD_SEQUENCE_LENGTH)
-				{
-					GazePattern::predict(gazeCoord.hmm_models, gazeCoord.coord_sequence);
-				}
-			}
 
             // Grabbing the next frame in the sequence
 			captured_image = sequence_reader.GetNextFrame();
@@ -346,6 +386,27 @@ int main(int argc, char **argv){
 
     }
 
+    return 0;
+}
+
+// 시선 추적 작업을 백그라운드에서 실행하는 함수
+void StartGazeTrackingInBackground(int argc, char **argv) {
+    std::thread gazeTrackingThread([=]() {
+        runGazeClickerTasks(argc, argv);  // 시선 추적 처리
+        std::cout << "Gaze tracking started in background thread." << std::endl;
+    });
+    gazeTrackingThread.detach();  // 백그라운드에서 독립적으로 실행
+}
+
+int main(int argc, char **argv){
+
+	@autoreleasepool {
+        // 시선 추적 작업을 백그라운드에서 실행
+        StartGazeTrackingInBackground(argc, argv);
+        
+        // 상태바 애플리케이션을 메인 스레드에서 실행
+        CreateStatusBarApp();  
+    }
     return 0;
 
 }

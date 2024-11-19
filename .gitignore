@@ -109,3 +109,6 @@ lib/local/CppInerop/Debug/
 
 # IDE-generated folders
 .idea
+
+packages/onnxruntime-osx-arm64-1.20.0
+packages/onnxruntime-osx-x86_64-1.20.0

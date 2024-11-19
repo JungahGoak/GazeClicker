@@ -91,9 +91,12 @@ COPY --from=model_data /data/patch_experts/* \
     /root/openface/lib/local/LandmarkDetector/model/patch_experts/
 
 RUN mkdir -p build && cd build && \
-    cmake -D CMAKE_BUILD_TYPE=RELEASE -G Ninja .. && \
-    ninja &&\
-    DESTDIR=/root/diff ninja install
+cmake -D CMAKE_BUILD_TYPE=RELEASE \
+        -D OpenBLAS_INCLUDE_DIR=/usr/include \
+        -D OpenBLAS_LIB=/usr/lib/x86_64-linux-gnu/libopenblas.so \
+        -G Ninja .. && \
+ninja && \
+DESTDIR=/root/diff ninja install
 
 
 ## ==================== Streamline container ===========================
