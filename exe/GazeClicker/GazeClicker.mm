@@ -63,6 +63,48 @@ std::vector<std::string> get_arguments(int argc, char **argv)
 
 GazeCoordinate::GazeCoordinate gazeCoord;
 
+// CSV 파일 경로
+const std::string CSV_FILE_PATH = "gaze_click_label45_2.csv";
+
+// 전역 인덱스 변수
+static int globalIndex = 1;  // 처음 시작 값은 1로 설정
+
+void saveDataToCSV(const std::vector<cv::Point2f>& coord_sequence, const cv::Point2f& mouseLocation, int clickedLabel) {
+    // 파일 열기 (쓰기 모드, 파일이 없으면 생성)
+    std::ofstream csvFile(CSV_FILE_PATH, std::ios::app);
+    if (!csvFile.is_open()) {
+        std::cerr << "Failed to open CSV file for writing: " << CSV_FILE_PATH << std::endl;
+        return;
+    }
+
+    // 파일에 헤더 작성 (파일이 비어 있는 경우에만)
+    static bool headerWritten = false;
+    if (!headerWritten) {
+        csvFile << "Index";
+        for (int i = 1; i <= COORD_SEQUENCE_LENGTH; ++i) {
+            csvFile << ",Coord_Sequence" << i << "_x,Coord_Sequence" << i << "_y";
+        }
+        csvFile << ",Coord_Click_x,Coord_Click_y,Click_Label" << std::endl;
+        headerWritten = true;
+    }
+
+    // 데이터 작성
+    csvFile << globalIndex++;  // 인덱스를 작성하고 값 증가
+    for (size_t i = 0; i < COORD_SEQUENCE_LENGTH; ++i) {
+        if (i < coord_sequence.size()) {
+            csvFile << "," << std::fixed << std::setprecision(2)  // 소수점 2자리로 출력
+                    << coord_sequence[i].x << "," << coord_sequence[i].y;
+        } else {
+            csvFile << ",,";  // 빈 좌표는 공백으로 처리
+        }
+    }
+    csvFile << "," << std::fixed << std::setprecision(2) << mouseLocation.x << "," << mouseLocation.y;  // 클릭 좌표
+    csvFile << "," << clickedLabel << std::endl;  // 클릭 라벨
+
+    csvFile.close();  // 파일 닫기
+    std::cout << "Data saved to CSV: " << CSV_FILE_PATH << std::endl;
+}
+
 // 마우스 이벤트 콜백 함수
 CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *userInfo) {
     if (type == kCGEventLeftMouseDown) {
@@ -71,9 +113,10 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
         CGPoint mouseLocation = CGEventGetLocation(event);
 		
         // 좌표 시퀀스의 크기가 맞으면 HMM 파라미터 업데이트
-        if (gazeCoord.coord_sequence.size() == COORD_SEQUENCE_LENGTH) {
+        if (gazeCoord.coord_sequence.size() >= COORD_SEQUENCE_LENGTH) {
 
-            // 좌표 시퀀스를 관측 심볼(1~8)로 변환
+
+			// 좌표 시퀀스를 관측 심볼(1~8)로 변환
             std::vector<int> directionSequence = MappingScreen::convertCoordinatesToDirections(gazeCoord.coord_sequence);
 			
 			// 1~8 변환된 방향 시퀀스 출력
@@ -88,7 +131,12 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
 
             // 클릭된 좌표를 라벨 값으로 변환
             int clickedLabel = MappingScreen::getLabelFromCoord(cv::Point2f(mouseLocation.x, mouseLocation.y));
-			std::cout << "====> 클릭 좌표 변환(label): " << clickedLabel << " screen size: " << screen_width << ' ' << screen_height <<std::endl;
+			std::cout << "====> 클릭 좌표 변환(label): " << clickedLabel << " screen size: " << screen_width << ", " << screen_height <<std::endl;
+
+			// 클릭 좌표 시퀀스와 라벨을 CSV로 저장
+			// std::vector<cv::Point2f> coord_sequence_vector(
+            // gazeCoord.coord_sequence.begin(), gazeCoord.coord_sequence.end());
+			// saveDataToCSV(coord_sequence_vector, cv::Point2f(mouseLocation.x, mouseLocation.y), clickedLabel);
 
 			// 최근 좌표와 클릭된 좌표 비교 후 기울기 업데이트
 			if (!gazeCoord.coord_sequence.empty()) {
@@ -99,7 +147,6 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
             if (gazeCoord.hmm_models[clickedLabel] == nullptr) {
                 // 해당 라벨에 대한 HMM 모델이 없으면 새로 생성
                 gazeCoord.hmm_models[clickedLabel] = std::make_unique<GazePattern::HMM>(NUM_STATES, NUM_OBSERVATIONS);
-                std::cout << "HMM created for label: " << clickedLabel << std::endl;
             }
 
             // 해당 라벨의 HMM 모델 업데이트
@@ -107,7 +154,6 @@ CGEventRef mouseCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef eve
             selectedHMM.baum_welch(directionSequence, 1);
             //selectedHMM.print_matrices();
 
-            std::cout << "HMM updated with sequence and clicked label: " << clickedLabel << std::endl;
         } else {
             std::cerr << "Sequence size mismatch. Current sequence size: " << gazeCoord.coord_sequence.size() << ", Expected: " << COORD_SEQUENCE_LENGTH << std::endl;
         }
@@ -176,8 +222,6 @@ int runGazeClickerTasks(int argc, char **argv){
 	*/
 	float scaling = 70;
 	double screen_face_distance = 50;
-
-
 
 	// no arguments: output usage
 	if (arguments.size() == 1)

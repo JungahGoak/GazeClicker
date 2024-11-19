@@ -38,12 +38,6 @@ void GazeCoordinate::updateSlope(cv::Point2f predictCoord, cv::Point2f clickCoor
     } else {
         slopes[direction] = std::max(0.1, slopes[direction] - std::abs(dynamic_correction));
     }
-    std::cout << "Updated slope for direction " << direction << ": " << slopes[direction] << std::endl;
-	std::cout << "Current slopes: ";
-    for (int i = 0; i < slopes.size(); ++i) {
-        std::cout << "Direction " << i << ": " << slopes[i] << " ";
-    }
-    std::cout << std::endl;
 }
 
 void GazeCoordinate::updateSequence(cv::Point2f newCoord) {

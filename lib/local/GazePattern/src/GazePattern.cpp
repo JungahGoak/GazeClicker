@@ -16,11 +16,11 @@ cv::Point2f predict(
     auto hmm_result = find_most_likely_label(hmm_models, directionSequence, MappingScreen::getLabelFromCoord(coord_sequence[-1]));
 
     if (hmm_result.first != -1 and hmm_result.second >= 0.95) {
-        std::cout << "===> [예측] HMM 예측: " << hmm_result.first << " with log-likelihood: " << hmm_result.second << std::endl;
+        std::cout << "======> [예측] HMM 예측: " << hmm_result.first << " with log-likelihood: " << hmm_result.second << std::endl;
         cv::Point2f center = MappingScreen::getLabelCenter(hmm_result.first);
         return center;
     } else {
-        std::cout << "===> [예측] 일반 예측: " << MappingScreen::getLabelFromCoord(coord_sequence[-1]) << " | HMM 예측: " << hmm_result.first << " with log-likelihood: " << hmm_result.second << std::endl;
+        std::cout << "======> [예측] 일반 예측: " << MappingScreen::getLabelFromCoord(coord_sequence[-1]) << " | HMM 예측: " << hmm_result.first << " with log-likelihood: " << hmm_result.second << std::endl;
         return coord_sequence[-1];
     }
 }
@@ -31,7 +31,6 @@ std::pair<int, double> find_most_likely_label(
     
     int best_label = -1;
     double max_log_likelihood = -std::numeric_limits<double>::infinity();
-
     int start = std::max(0, last_label - GRID_SIZE - 1);
     int end = std::min(static_cast<int>(hmm_models.size()), last_label + GRID_SIZE + 1);
 

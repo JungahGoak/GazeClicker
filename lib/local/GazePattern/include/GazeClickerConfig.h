@@ -10,7 +10,8 @@
 constexpr int GRID_SIZE = 10;          // 화면을 나누는 그리드 크기
 constexpr int NUM_STATES = 10;         // HMM의 상태 수
 constexpr int NUM_OBSERVATIONS = 8;    // HMM의 관측 기호 수
-constexpr int COORD_SEQUENCE_LENGTH = 10;    // 좌표 시퀀스의 길이
+constexpr int COORD_SEQUENCE_LENGTH = 20;    // 좌표 시퀀스의 길이
+constexpr int PREDICT_SEQUENCE_LENGTH = 10; // 예측 시퀀스 길이
 
 // 화면 크기 변수 (정의는 cpp 파일에서)
 extern int screen_width;

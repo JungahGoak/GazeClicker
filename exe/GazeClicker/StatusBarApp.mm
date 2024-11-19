@@ -1,5 +1,4 @@
 // StatusBarApp.mm
-
 #include <opencv2/opencv.hpp>
 #import <Cocoa/Cocoa.h>
 #include "UI.h"
@@ -27,6 +26,43 @@ extern GazeCoordinate::GazeCoordinate gazeCoord;
 - (void)drawRect:(NSRect)dirtyRect {
     [super drawRect:dirtyRect];
     
+    CGFloat gridWidth = self.bounds.size.width / 10.0;
+    CGFloat gridHeight = self.bounds.size.height / 10.0;
+
+    // 10x10 그리드 그리기
+    for (int i = 0; i <= 10; i++) {
+        // 수평선 그리기
+        NSBezierPath *horizontalLine = [NSBezierPath bezierPath];
+        [horizontalLine moveToPoint:NSMakePoint(0, i * gridHeight)];
+        [horizontalLine lineToPoint:NSMakePoint(self.bounds.size.width, i * gridHeight)];
+        [[NSColor lightGrayColor] setStroke];
+        [horizontalLine stroke];
+
+        // 수직선 그리기
+        NSBezierPath *verticalLine = [NSBezierPath bezierPath];
+        [verticalLine moveToPoint:NSMakePoint(i * gridWidth, 0)];
+        [verticalLine lineToPoint:NSMakePoint(i * gridWidth, self.bounds.size.height)];
+        [[NSColor lightGrayColor] setStroke];
+        [verticalLine stroke];
+    }
+
+    // 각 그리드에 번호 표시
+    NSDictionary *textAttributes = @{NSFontAttributeName: [NSFont systemFontOfSize:10],
+                                      NSForegroundColorAttributeName: [NSColor blackColor]};
+    int number = 0;
+    for (int row = 0; row < 10; row++) {
+        for (int col = 0; col < 10; col++) {
+            CGFloat x = col * gridWidth + gridWidth / 2.0;
+            CGFloat y = self.bounds.size.height - (row * gridHeight + gridHeight / 2.0);
+            NSString *numberString = [NSString stringWithFormat:@"%d", number];
+            CGSize textSize = [numberString sizeWithAttributes:textAttributes];
+            NSPoint textPoint = NSMakePoint(x - textSize.width / 2.0, y - textSize.height / 2.0);
+            [numberString drawAtPoint:textPoint withAttributes:textAttributes];
+            number++;
+        }
+    }
+
+
     if (!gazeCoord.getIsPredictMode()) {
         // 모든 좌표를 화면에 표시
         for (cv::Point2f coord : gazeCoord.coord_sequence) {

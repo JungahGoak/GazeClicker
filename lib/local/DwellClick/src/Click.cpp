@@ -1,11 +1,13 @@
 #include "Click.h"
 #include "UI.h"
 #include "GazeCoordinate.h"
+#include "GazeClickerConfig.h"
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <iostream>
 #include <thread>
 #include <chrono>  // std::chrono 사용
+#include <onnxruntime_cxx_api.h>  // GRU
 
 #include <ApplicationServices/ApplicationServices.h>
 
@@ -56,7 +58,7 @@ bool Click::updateDwellTime(const cv::Point2f& click_coord, GazeCoordinate::Gaze
 void SimulateMouseClick(CGPoint point) {
     // 클릭 이벤트를 위한 CGEventRef 생성
 
-    std::cout << "[[[[[[[[[[[[[[[[[[]]]]]]]]]] Click simulated [[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]" << std::endl;
+    std::cout << "=======> Click Simulate: (" << point.x << " ," << point.y << ")" << std::endl;
     CGEventRef mouseDown = CGEventCreateMouseEvent(
         NULL, kCGEventLeftMouseDown, point, kCGMouseButtonLeft);
     CGEventRef mouseUp = CGEventCreateMouseEvent(
@@ -86,11 +88,12 @@ void Click::triggerClickEvent(const cv::Point2f click_coord, GazeCoordinate::Gaz
     // 현재 x좌표가 클릭좌표보다 오른쪽이면 yes, 아니면 no
     if (click_coord.x > gazeCoord.coord_sequence.back().x){
         // click event 실행
-        std::cout << "YYYYYEEEEESSSSSS" << std::endl;
+        std::cout << "=====> Click YES" << std::endl;
+        
         GazePattern::predict(gazeCoord.hmm_models, gazeCoord.coord_sequence);
         SimulateMouseClick(CGPointMake(click_coord.x, click_coord.y));
     } else {
-        std::cout << "NNNNOOOOOOOOOOOO" <<  "click 좌표: " << click_coord.x << " 예측 좌표: " << gazeCoord.coord_sequence.back().x << std::endl;
+        std::cout << "=====> Click NO" <<  "click 좌표: " << click_coord.x << " 예측 좌표: " << gazeCoord.coord_sequence.back().x << std::endl;
     }
 }
 
